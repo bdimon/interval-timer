@@ -1,0 +1,6 @@
+{
+  "name": "Interval Timer C & Web Suite",
+  "description": "Configurable interval timer with C core architecture, sound signals, metronome countdown, custom complex cycles, presets, session logging, and CLI/GUI/Web/Android portability.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
