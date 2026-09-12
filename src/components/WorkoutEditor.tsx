@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -45,6 +45,19 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
   const [showCModal, setShowCModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [savedSuccessMsg, setSavedSuccessMsg] = useState<string | null>(null);
+
+  // Track saved state & pending modifications for reactive button rendering
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string>(() => JSON.stringify(plan));
+  const [justSavedUpdate, setJustSavedUpdate] = useState(false);
+  const [justSavedNew, setJustSavedNew] = useState(false);
+
+  useEffect(() => {
+    setLastSavedSnapshot(JSON.stringify(plan));
+    setJustSavedUpdate(false);
+    setJustSavedNew(false);
+  }, [editingPresetId]);
+
+  const isPlanModified = JSON.stringify(plan) !== lastSavedSnapshot;
 
   // Quick generator states
   const [genCount, setGenCount] = useState(6);
@@ -192,12 +205,22 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
 
   const handleSaveUpdate = () => {
     onSavePresetUpdate(plan);
+    setLastSavedSnapshot(JSON.stringify(plan));
+    setJustSavedUpdate(true);
     notifySuccess('Изменения шаблона сохранены!');
+    setTimeout(() => {
+      setJustSavedUpdate(false);
+    }, 3500);
   };
 
   const handleSaveNew = () => {
     onSaveAsNewPreset(plan);
+    setLastSavedSnapshot(JSON.stringify(plan));
+    setJustSavedNew(true);
     notifySuccess('Сохранен как новый шаблон!');
+    setTimeout(() => {
+      setJustSavedNew(false);
+    }, 3500);
   };
 
   const copyToClipboard = (text: string) => {
@@ -228,7 +251,10 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             {onResetToOriginalPreset && (
               <button
                 type="button"
-                onClick={onResetToOriginalPreset}
+                onClick={() => {
+                  onResetToOriginalPreset();
+                  setJustSavedUpdate(false);
+                }}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-xs text-zinc-300 transition-colors"
                 title="Сбросить все внесенные изменения к оригиналу шаблона"
               >
@@ -238,11 +264,40 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             )}
             <button
               type="button"
+              id="btn-banner-save-preset"
               onClick={handleSaveUpdate}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+                justSavedUpdate
+                  ? 'bg-emerald-400 text-zinc-950 shadow-emerald-500/30 ring-2 ring-emerald-300 scale-105'
+                  : isPlanModified
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-emerald-500/25 ring-1 ring-emerald-400'
+                  : 'bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/60'
+              }`}
+              title={
+                justSavedUpdate
+                  ? 'Все изменения успешно сохранены!'
+                  : isPlanModified
+                  ? 'Есть несохраненные изменения: нажмите, чтобы обновить шаблон'
+                  : 'Все изменения уже сохранены в шаблоне'
+              }
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>Сохранить в шаблон</span>
+              {justSavedUpdate ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[2.5] text-zinc-950" />
+                  <span>Сохранено в шаблон ✓</span>
+                </>
+              ) : isPlanModified ? (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Сохранить в шаблон</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-300 ml-0.5 animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Шаблон сохранен ✓</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -296,10 +351,38 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             <button
               id="btn-save-preset-update"
               onClick={handleSaveUpdate}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-all shadow-sm"
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm ${
+                justSavedUpdate
+                  ? 'bg-emerald-400 text-zinc-950 font-bold shadow-emerald-500/30 ring-2 ring-emerald-300 scale-105'
+                  : isPlanModified
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25 ring-1 ring-emerald-400/50'
+                  : 'bg-zinc-900 border border-emerald-500/40 text-emerald-400 hover:bg-zinc-800'
+              }`}
+              title={
+                justSavedUpdate
+                  ? 'Все изменения успешно записаны в шаблон'
+                  : isPlanModified
+                  ? 'Сохранить внесенные изменения в текущий шаблон'
+                  : 'Все изменения уже сохранены'
+              }
             >
-              <Save className="w-4 h-4" />
-              <span>Сохранить изменения</span>
+              {justSavedUpdate ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[2.5] text-zinc-950" />
+                  <span>Изменения сохранены ✓</span>
+                </>
+              ) : isPlanModified ? (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Сохранить изменения</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 ml-0.5 animate-pulse" title="Есть несохраненные изменения" />
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Изменения сохранены ✓</span>
+                </>
+              )}
             </button>
           ) : null}
 
@@ -307,10 +390,23 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
           <button
             id="btn-save-as-preset"
             onClick={handleSaveNew}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 hover:bg-zinc-800 text-xs font-semibold transition-all"
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+              justSavedNew
+                ? 'bg-emerald-500 text-zinc-950 font-bold shadow-emerald-500/30 ring-2 ring-emerald-300'
+                : 'bg-zinc-900 border border-zinc-700 text-zinc-200 hover:bg-zinc-800'
+            }`}
           >
-            <Save className="w-4 h-4 text-emerald-400" />
-            <span>Сохранить как новый</span>
+            {justSavedNew ? (
+              <>
+                <Check className="w-4 h-4 stroke-[2.5] text-zinc-950" />
+                <span>Сохранен как новый ✓</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 text-emerald-400" />
+                <span>Сохранить как новый</span>
+              </>
+            )}
           </button>
 
           {/* Apply to Timer */}

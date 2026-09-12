@@ -105,11 +105,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 id="btn-navbar-new-workout"
                 onClick={onNewWorkout}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-semibold transition-all shadow-xs"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 hover:text-white text-xs font-semibold transition-all shadow-xs"
                 title="Создать новый сложный цикл / шаблон"
               >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>+ Новый цикл</span>
+                <Plus className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
+                <span>Новый цикл</span>
               </button>
             )}
 
@@ -140,17 +140,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Mobile Horizontal Scroll Nav */}
-        <div className="lg:hidden flex overflow-x-auto py-2 gap-1 border-t border-zinc-900 scrollbar-none items-center">
+        <div className="lg:hidden flex overflow-x-auto py-2 gap-1.5 border-t border-zinc-900 scrollbar-none items-center">
           {onNewWorkout && (
-            <button
-              id="mobile-nav-new-workout"
-              onClick={onNewWorkout}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs whitespace-nowrap font-bold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-              title="Создать новый сложный цикл / шаблон"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>+ Новый цикл</span>
-            </button>
+            <>
+              <button
+                id="mobile-nav-new-workout"
+                onClick={onNewWorkout}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs whitespace-nowrap font-medium rounded-md bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800 active:scale-95 transition-all shrink-0"
+                title="Создать новый сложный цикл / шаблон"
+              >
+                <Plus className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
+                <span>Новый цикл</span>
+              </button>
+              <div className="h-4 w-px bg-zinc-800 shrink-0 mx-0.5" />
+            </>
           )}
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -163,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-all ${
                   isActive
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'text-zinc-400 hover:bg-zinc-900'
+                    : 'text-zinc-400 hover:bg-zinc-900 border border-transparent'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
