@@ -111,13 +111,13 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
             onClick={handleExportAllJSON}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold transition-colors"
           >
-            <Download className="w-4 h-4 text-emerald-400" />
+            <Upload className="w-4 h-4 text-emerald-400" />
             <span>Экспорт JSON</span>
           </button>
 
           {/* Import JSON */}
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold transition-colors cursor-pointer">
-            <Upload className="w-4 h-4 text-cyan-400" />
+            <Download className="w-4 h-4 text-cyan-400" />
             <span>Импорт JSON</span>
             <input
               type="file"
