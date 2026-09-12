@@ -56,24 +56,24 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
   ];
 
   return (
-    <div className="w-full bg-zinc-950 rounded-2xl border border-zinc-800/80 p-5 shadow-lg flex flex-col gap-5">
+    <div className="w-full bg-zinc-950 rounded-2xl border border-zinc-800/80 p-3 sm:p-4 shadow-lg flex flex-col gap-3 sm:gap-3.5">
       {/* Primary Action Buttons Row */}
-      <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {/* Step Back / Previous */}
         <button
           id="btn-step-prev"
           onClick={onSkipPrev}
           title="Предыдущий сет"
-          className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95"
+          className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
-          <SkipBack className="w-5 h-5" />
+          <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         {/* Big Start / Pause / Resume Button */}
         <button
           id="btn-primary-toggle"
           onClick={handlePrimaryClick}
-          className={`flex items-center gap-3 px-8 sm:px-12 py-4 rounded-2xl font-bold text-lg tracking-wide shadow-xl transition-all active:scale-95 ${
+          className={`flex items-center justify-center gap-2 sm:gap-2.5 px-6 sm:px-10 py-2.5 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base tracking-wide shadow-lg transition-all active:scale-95 ${
             !isRunning || isPaused
               ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-emerald-500/20'
               : 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-amber-500/20'
@@ -81,17 +81,17 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         >
           {!isRunning ? (
             <>
-              <Play className="w-6 h-6 fill-current" />
+              <Play className="w-5 h-5 fill-current shrink-0" />
               <span>СТАРТ ТРЕНИРОВКИ</span>
             </>
           ) : isPaused ? (
             <>
-              <Play className="w-6 h-6 fill-current" />
+              <Play className="w-5 h-5 fill-current shrink-0" />
               <span>ПРОДОЛЖИТЬ</span>
             </>
           ) : (
             <>
-              <Pause className="w-6 h-6 fill-current" />
+              <Pause className="w-5 h-5 fill-current shrink-0" />
               <span>ПАУЗА</span>
             </>
           )}
@@ -102,9 +102,9 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
           id="btn-skip-next"
           onClick={onSkipNext}
           title="Пропустить фазу (S)"
-          className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95"
+          className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
-          <SkipForward className="w-5 h-5" />
+          <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         {/* Reset */}
@@ -112,14 +112,14 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
           id="btn-reset-timer"
           onClick={onReset}
           title="Сброс таймера (R)"
-          className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-400 hover:text-red-400 hover:border-red-500/40 hover:bg-zinc-800 transition-all active:scale-95"
+          className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-400 hover:text-red-400 hover:border-red-500/40 hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
-          <RotateCcw className="w-5 h-5" />
+          <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
 
       {/* Sound Settings Bar */}
-      <div className="pt-4 border-t border-zinc-900 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 sm:gap-4 text-xs text-zinc-400">
+      <div className="pt-2.5 sm:pt-3 border-t border-zinc-900 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-2 sm:gap-3 text-xs text-zinc-400">
         {/* Sound Theme Selector & Test Buttons */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 shrink-0">

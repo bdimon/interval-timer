@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Flame, Coffee, CheckCircle2, PauseCircle, Timer as TimerIcon } from 'lucide-react';
+import { Bell, Flame, Coffee, CheckCircle2, PauseCircle, Timer as TimerIcon, BarChart2, CircleDot } from 'lucide-react';
 import { TimerPhase, WorkoutPlan } from '../types';
 
 interface TimerDisplayProps {
@@ -22,6 +22,16 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
   plan,
   totalElapsedSeconds,
 }) => {
+  // Allow toggling between linear (compact 1-screen) and circular modes, defaulting to 'linear'
+  const [displayMode, setDisplayMode] = useState<'linear' | 'circular'>(() => {
+    return (localStorage.getItem('timer_display_mode') as 'linear' | 'circular') || 'linear';
+  });
+
+  const handleToggleMode = (mode: 'linear' | 'circular') => {
+    setDisplayMode(mode);
+    localStorage.setItem('timer_display_mode', mode);
+  };
+
   const currentSet = plan.sets[currentSetIndex] || plan.sets[0];
   const isCountingDown3s = secondsRemaining <= 3 && secondsRemaining >= 1 && phase !== 'PAUSED' && phase !== 'COMPLETED';
   const isLastSetOfCycle = currentSetIndex === plan.sets.length - 1;
@@ -78,6 +88,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           cardBorder: 'border-emerald-500/30',
           radialGlow: 'from-emerald-500/10 via-emerald-950/20 to-zinc-950',
           ringColor: '#10b981',
+          barGradient: 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-emerald-500/30',
+          indicatorColor: 'bg-emerald-400',
         };
       case 'REST':
       case 'CYCLE_REST':
@@ -89,6 +101,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           cardBorder: 'border-cyan-500/30',
           radialGlow: 'from-cyan-500/10 via-cyan-950/20 to-zinc-950',
           ringColor: '#06b6d4',
+          barGradient: 'bg-gradient-to-r from-cyan-500 to-sky-400 shadow-cyan-500/30',
+          indicatorColor: 'bg-cyan-400',
         };
       case 'PREP':
         return {
@@ -99,6 +113,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           cardBorder: 'border-amber-500/30',
           radialGlow: 'from-amber-500/10 via-amber-950/20 to-zinc-950',
           ringColor: '#f59e0b',
+          barGradient: 'bg-gradient-to-r from-amber-500 to-yellow-400 shadow-amber-500/30',
+          indicatorColor: 'bg-amber-400',
         };
       case 'PAUSED':
         return {
@@ -109,6 +125,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           cardBorder: 'border-purple-500/30',
           radialGlow: 'from-purple-500/10 via-purple-950/20 to-zinc-950',
           ringColor: '#a855f7',
+          barGradient: 'bg-gradient-to-r from-purple-500 to-fuchsia-400 shadow-purple-500/30',
+          indicatorColor: 'bg-purple-400',
         };
       case 'COMPLETED':
         return {
@@ -119,6 +137,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           cardBorder: 'border-emerald-500/50',
           radialGlow: 'from-emerald-500/20 via-zinc-900 to-zinc-950',
           ringColor: '#10b981',
+          barGradient: 'bg-gradient-to-r from-emerald-400 to-teal-300 shadow-emerald-500/40',
+          indicatorColor: 'bg-emerald-400',
         };
       default:
         return {
@@ -129,6 +149,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           cardBorder: 'border-zinc-800',
           radialGlow: 'from-zinc-900 via-zinc-950 to-zinc-950',
           ringColor: '#71717a',
+          barGradient: 'bg-zinc-600',
+          indicatorColor: 'bg-zinc-400',
         };
     }
   };
@@ -136,16 +158,22 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
   const currentStyles = getPhaseStyles();
   const PhaseIcon = currentStyles.icon;
 
-  // Percentage for circular ring (remaining / total)
+  // Percentage for progress (remaining / total)
   const progressRatio = totalPhaseSeconds > 0 
     ? Math.max(0, Math.min(1, secondsRemaining / totalPhaseSeconds))
     : 0;
+  const progressPercent = Math.round(progressRatio * 100);
+  const elapsedInPhase = Math.max(0, totalPhaseSeconds - secondsRemaining);
   const strokeDashoffset = 100 - (progressRatio * 100);
+
+  const isLinear = displayMode === 'linear';
 
   return (
     <div
       id="timer-display-container"
-      className={`relative overflow-hidden rounded-3xl border ${currentStyles.cardBorder} bg-gradient-to-b ${currentStyles.radialGlow} p-6 sm:p-10 shadow-2xl transition-all duration-500 flex flex-col items-center justify-center text-center`}
+      className={`relative w-full overflow-hidden rounded-2xl sm:rounded-3xl border ${currentStyles.cardBorder} bg-gradient-to-b ${currentStyles.radialGlow} ${
+        isLinear ? 'p-3.5 sm:p-5' : 'p-5 sm:p-8'
+      } shadow-xl transition-all duration-300 flex flex-col items-center justify-center text-center`}
     >
       {/* 3-Second Visual Metronome Pulse Indicator */}
       <AnimatePresence>
@@ -154,128 +182,189 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 1.2, opacity: 0 }}
-            className="absolute top-4 inset-x-4 z-20 flex items-center justify-center"
+            className="absolute top-2 inset-x-4 z-20 flex items-center justify-center"
           >
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-300 backdrop-blur-md shadow-lg animate-pulse">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-              <span className="font-mono font-bold text-xs uppercase tracking-wider">
-                Внимание: Звук метронома ({secondsRemaining} с)
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-300 backdrop-blur-md shadow-lg animate-pulse text-xs">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+              <span className="font-mono font-bold uppercase tracking-wider">
+                Метроном: {secondsRemaining}с
               </span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Top Header: Current Preset, Cycle & Set Pills */}
-      <div className="w-full flex flex-wrap items-center justify-between gap-3 mb-6 z-10 text-xs sm:text-sm">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-zinc-400">План:</span>
-          <span className="font-semibold text-white px-2.5 py-1 rounded-md bg-zinc-900/90 border border-zinc-700">
+      {/* Top Header: Current Preset, Cycle & Set Pills + View Mode Toggle */}
+      <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2 sm:mb-3 z-10 text-xs">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-medium text-zinc-400 hidden xs:inline">План:</span>
+          <span className="font-semibold text-white px-2 py-0.5 rounded-md bg-zinc-900/90 border border-zinc-700 truncate max-w-[150px] sm:max-w-[220px]">
             {plan.name}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {isLastSetOfCycle && plan.sets.length > 1 && (
-            <span className="px-2.5 py-1 rounded-md bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-xs font-semibold flex items-center gap-1 animate-pulse shadow-sm">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
-              <span>Финал цикла!</span>
+            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-[11px] font-semibold flex items-center gap-1 animate-pulse shadow-sm">
+              <Flame className="w-3 h-3 text-amber-400" />
+              <span>Финал!</span>
             </span>
           )}
-          <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono">
-            Сет <strong className="text-white">{currentSetIndex + 1}</strong> / {plan.sets.length}
+          <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-xs">
+            Сет <strong className="text-white">{currentSetIndex + 1}</strong>/{plan.sets.length}
           </span>
-          <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono">
-            Цикл <strong className="text-white">{currentCycleIndex + 1}</strong> / {plan.cycles}
+          <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-xs">
+            Цикл <strong className="text-white">{currentCycleIndex + 1}</strong>/{plan.cycles}
           </span>
+
+          {/* View mode toggle button (Linear vs Circular) */}
+          <div className="flex items-center ml-1 bg-zinc-900/90 border border-zinc-800 rounded-lg p-0.5">
+            <button
+              type="button"
+              id="btn-mode-linear"
+              onClick={() => handleToggleMode('linear')}
+              className={`p-1 rounded-md transition-colors ${
+                isLinear ? 'bg-zinc-700 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Линейный компактный режим (на 1 экран)"
+            >
+              <BarChart2 className="w-3.5 h-3.5 rotate-90" />
+            </button>
+            <button
+              type="button"
+              id="btn-mode-circular"
+              onClick={() => handleToggleMode('circular')}
+              className={`p-1 rounded-md transition-colors ${
+                !isLinear ? 'bg-zinc-700 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Круговой классический режим"
+            >
+              <CircleDot className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Phase Badge */}
-      <div className="mb-4 z-10 flex flex-wrap items-center justify-center gap-2">
-        <span
-          id="phase-badge"
-          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full font-bold text-xs sm:text-sm tracking-widest uppercase border shadow-sm ${currentStyles.badgeBg}`}
-        >
-          <PhaseIcon className="w-4 h-4" />
-          <span>{currentStyles.title}</span>
-        </span>
-        {currentSet.workSeconds === 0 && phase === 'REST' && (
-          <span className="px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-xs font-medium">
-            Без работы (0с)
+      {/* Phase Badge & Exercise Name Row */}
+      <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-1.5 sm:mb-2 z-10">
+        <div className="flex items-center gap-2">
+          <span
+            id="phase-badge"
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full font-bold text-[11px] sm:text-xs tracking-wider uppercase border shadow-xs ${currentStyles.badgeBg}`}
+          >
+            <PhaseIcon className="w-3.5 h-3.5" />
+            <span>{currentStyles.title}</span>
           </span>
-        )}
-      </div>
+          {currentSet.workSeconds === 0 && phase === 'REST' && (
+            <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-[11px] font-medium">
+              Без работы (0с)
+            </span>
+          )}
+        </div>
 
-      {/* Set Name */}
-      <div className="z-10 mb-4 max-w-md">
-        <h3 className="text-xl sm:text-2xl font-semibold text-zinc-200 truncate">
+        {/* Set / Exercise Name */}
+        <h3 className="text-sm sm:text-base font-semibold text-zinc-200 truncate max-w-[240px] sm:max-w-xs text-right">
           {phase === 'WORK'
             ? currentSet.name
             : phase === 'REST'
             ? currentSet.workSeconds === 0
-              ? `${currentSet.name} (Только отдых)`
-              : `Передышка перед следующим сетом`
+              ? `${currentSet.name} (Отдых)`
+              : `Передышка`
             : phase === 'CYCLE_REST'
             ? `Отдых перед циклом ${currentCycleIndex + 2}`
             : phase === 'PREP'
-            ? 'Приготовьтесь к работе'
+            ? 'Приготовьтесь'
             : plan.name}
         </h3>
       </div>
 
-      {/* Circular Progress & Huge Digital Countdown */}
-      <div className="relative my-4 flex items-center justify-center">
-        {/* SVG Progress Ring */}
-        <svg className="w-64 h-64 sm:w-80 sm:h-80 -rotate-90 transform" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="44"
-            className="stroke-zinc-800/80 fill-none"
-            strokeWidth="5"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="44"
-            fill="none"
-            stroke={currentStyles.ringColor}
-            strokeWidth="5"
-            strokeDasharray="276.46"
-            strokeDashoffset={(strokeDashoffset / 100) * 276.46}
-            strokeLinecap="round"
-            className="transition-all duration-300 ease-linear"
-          />
-        </svg>
+      {/* --- DISPLAY MODE 1: LINEAR PROGRESS COUNTER (COMPACT 1-SCREEN) --- */}
+      {isLinear ? (
+        <div className="w-full my-1 sm:my-2 flex flex-col items-center justify-center z-10">
+          {/* Main Countdown Digits */}
+          <div className="flex items-baseline justify-center gap-2 select-none">
+            <span
+              id="timer-countdown-digits"
+              className={`font-mono text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-none drop-shadow-sm transition-all duration-200 ${
+                isCountingDown3s ? 'text-rose-400 scale-105' : 'text-white'
+              }`}
+            >
+              {formatTime(secondsRemaining)}
+            </span>
+            <span className="text-xs sm:text-sm font-medium text-zinc-400">
+              {phase === 'PAUSED' ? 'ПАУЗА' : `/ ${formatTime(totalPhaseSeconds)}`}
+            </span>
+          </div>
 
-        {/* Center Digital Digits */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 select-none p-4">
-          <span
-            id="timer-countdown-digits"
-            className={`font-mono text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight drop-shadow-sm transition-all duration-200 ${
-              isCountingDown3s ? 'text-rose-400 scale-105' : 'text-white'
-            }`}
-          >
-            {formatTime(secondsRemaining)}
-          </span>
+          {/* High-visibility Linear Progress Bar */}
+          <div className="w-full mt-2 sm:mt-3 px-1">
+            <div className="w-full h-3 sm:h-3.5 bg-zinc-900/90 rounded-full overflow-hidden p-0.5 border border-zinc-800/90 relative">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ease-linear shadow-sm ${currentStyles.barGradient}`}
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
 
-          {/* Sub-label under digits */}
-          <span className="text-xs sm:text-sm font-medium text-zinc-400 mt-1">
-            {phase === 'PAUSED' ? 'ТАЙМЕР НА ПАУЗЕ' : `Осталось в фазе`}
-          </span>
+            {/* Sub-bar time indicators */}
+            <div className="w-full flex items-center justify-between text-[11px] font-mono text-zinc-400 mt-1 px-1">
+              <span>Прошло: {formatTime(elapsedInPhase)}</span>
+              <span className="font-semibold text-zinc-300">{progressPercent}%</span>
+              <span>Осталось: {formatTime(secondsRemaining)}</span>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* --- DISPLAY MODE 2: CLASSIC CIRCULAR COUNTER (COMPACTED) --- */
+        <div className="relative my-2 sm:my-3 flex items-center justify-center">
+          <svg className="w-48 h-48 sm:w-60 sm:h-60 -rotate-90 transform" viewBox="0 0 100 100">
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              className="stroke-zinc-800/80 fill-none"
+              strokeWidth="5"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="44"
+              fill="none"
+              stroke={currentStyles.ringColor}
+              strokeWidth="5"
+              strokeDasharray="276.46"
+              strokeDashoffset={(strokeDashoffset / 100) * 276.46}
+              strokeLinecap="round"
+              className="transition-all duration-300 ease-linear"
+            />
+          </svg>
+
+          {/* Center Digital Digits */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 select-none p-2">
+            <span
+              id="timer-countdown-digits"
+              className={`font-mono text-4xl sm:text-5xl font-black tracking-tight drop-shadow-sm transition-all duration-200 ${
+                isCountingDown3s ? 'text-rose-400 scale-105' : 'text-white'
+              }`}
+            >
+              {formatTime(secondsRemaining)}
+            </span>
+
+            <span className="text-[11px] sm:text-xs font-medium text-zinc-400 mt-0.5">
+              {phase === 'PAUSED' ? 'ТАЙМЕР НА ПАУЗЕ' : `Осталось в фазе`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Info: Next Phase Preview & Elapsed Total */}
-      <div className="w-full max-w-lg mt-6 pt-4 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-zinc-400 z-10">
-        <div className="flex items-center gap-1.5 text-center sm:text-left">
-          <span className="text-zinc-500">Далее:</span>
-          <span className="text-zinc-300 font-medium">{getNextPhaseInfo()}</span>
+      <div className="w-full mt-2 sm:mt-3 pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400 z-10">
+        <div className="flex items-center gap-1.5 text-left truncate max-w-[70%]">
+          <span className="text-zinc-500 shrink-0">Далее:</span>
+          <span className="text-zinc-300 font-medium truncate">{getNextPhaseInfo()}</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-zinc-500">Общее время:</span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-zinc-500">Общее:</span>
           <span className="font-mono text-emerald-400 font-semibold">
             {formatTime(totalElapsedSeconds)}
           </span>
@@ -284,3 +373,4 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     </div>
   );
 };
+

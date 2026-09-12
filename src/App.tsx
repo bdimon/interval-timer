@@ -683,9 +683,9 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col items-center">
-        {/* TAB 1: Main Interactive GUI Timer */}
-        <div className={activeTab === 'timer' ? 'w-full max-w-3xl flex flex-col gap-6 items-center' : 'hidden'}>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-2.5 sm:p-4 md:p-6 flex flex-col items-center justify-start">
+        {/* TAB 1: Main Interactive GUI Timer (Compact 1-screen layout) */}
+        <div className={activeTab === 'timer' ? 'w-full max-w-2xl flex flex-col gap-2.5 sm:gap-3 items-center' : 'hidden'}>
           <TimerDisplay
             phase={phase}
             secondsRemaining={secondsRemaining}
