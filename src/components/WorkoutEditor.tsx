@@ -29,6 +29,7 @@ interface WorkoutEditorProps {
   onSavePresetUpdate: (plan: WorkoutPlan) => void;
   onSaveAsNewPreset: (plan: WorkoutPlan) => void;
   onResetToOriginalPreset?: () => void;
+  onCreateBlankPlan?: () => void;
 }
 
 export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
@@ -39,6 +40,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
   onSavePresetUpdate,
   onSaveAsNewPreset,
   onResetToOriginalPreset,
+  onCreateBlankPlan,
 }) => {
   const [showCModal, setShowCModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -266,6 +268,19 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Create Blank Plan / Complex Cycle */}
+          {onCreateBlankPlan && (
+            <button
+              id="btn-create-new-cycle"
+              onClick={onCreateBlankPlan}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
+              title="Начать новый сложный цикл с чистого листа"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Создать новый сложный цикл</span>
+            </button>
+          )}
+
           {/* Export to C Code */}
           <button
             id="btn-export-c-header"

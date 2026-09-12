@@ -566,6 +566,45 @@ export default function App() {
     addTerminalLog(`Открыт для редактирования шаблон "${plan.name}".`);
   };
 
+  // Create a brand new blank workout plan / complex cycle
+  const handleCreateNewBlankPlan = () => {
+    const blankPlan: WorkoutPlan = {
+      id: `custom-plan-${Date.now()}`,
+      name: 'Новый сложный цикл',
+      description: 'Пользовательский тренировочный цикл с индивидуальной настройкой сетов.',
+      prepSeconds: 5,
+      cycles: 1,
+      cycleRestSeconds: 30,
+      isCustom: true,
+      createdAt: new Date().toISOString(),
+      sets: [
+        {
+          id: `set-${Date.now()}-1`,
+          name: 'Сет 1',
+          workSeconds: 30,
+          restSeconds: 15,
+        },
+        {
+          id: `set-${Date.now()}-2`,
+          name: 'Сет 2',
+          workSeconds: 30,
+          restSeconds: 15,
+        },
+        {
+          id: `set-${Date.now()}-3`,
+          name: 'Сет 3',
+          workSeconds: 30,
+          restSeconds: 15,
+        },
+      ],
+    };
+
+    setEditingPresetId(null);
+    setEditorPlan(blankPlan);
+    setActiveTab('editor');
+    addTerminalLog('Создан новый пустой сложный цикл в конструкторе.');
+  };
+
   const handleSavePresetUpdate = (updatedPlan: WorkoutPlan) => {
     setPresets((prev) =>
       prev.map((p) => (p.id === updatedPlan.id ? { ...updatedPlan, isCustom: true } : p))
@@ -638,6 +677,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         soundConfig={soundConfig}
         setSoundConfig={setSoundConfig}
+        onNewWorkout={handleCreateNewBlankPlan}
       />
 
       {/* Main Content Area */}
@@ -684,6 +724,7 @@ export default function App() {
             onSavePresetUpdate={handleSavePresetUpdate}
             onSaveAsNewPreset={handleSaveAsNewPreset}
             onResetToOriginalPreset={handleResetToOriginalPreset}
+            onCreateBlankPlan={handleCreateNewBlankPlan}
           />
         </div>
 
@@ -716,6 +757,7 @@ export default function App() {
             presets={presets}
             onSelectPreset={handleSelectPreset}
             onEditPreset={handleEditPreset}
+            onCreateNewPreset={handleCreateNewBlankPlan}
             onDeletePreset={handleDeletePreset}
             onResetDefaults={handleResetDefaultPresets}
             onImportPresets={handleImportPresets}

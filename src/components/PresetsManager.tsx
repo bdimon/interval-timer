@@ -9,7 +9,9 @@ import {
   RotateCcw, 
   Clock, 
   Check, 
-  Copy 
+  Copy,
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { WorkoutPlan } from '../types';
 import { exportPlanToCHeader } from '../utils/cExportHelper';
@@ -18,6 +20,7 @@ interface PresetsManagerProps {
   presets: WorkoutPlan[];
   onSelectPreset: (plan: WorkoutPlan, autoStart?: boolean) => void;
   onEditPreset: (plan: WorkoutPlan) => void;
+  onCreateNewPreset: () => void;
   onDeletePreset: (id: string) => void;
   onResetDefaults: () => void;
   onImportPresets: (plans: WorkoutPlan[]) => void;
@@ -27,6 +30,7 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
   presets,
   onSelectPreset,
   onEditPreset,
+  onCreateNewPreset,
   onDeletePreset,
   onResetDefaults,
   onImportPresets,
@@ -91,6 +95,17 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Create New Preset Button */}
+          <button
+            id="btn-create-new-preset"
+            onClick={onCreateNewPreset}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
+            title="Создать новый шаблон с чистого листа в конструкторе"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Создать новый шаблон</span>
+          </button>
+
           {/* Export JSON */}
           <button
             onClick={handleExportAllJSON}
@@ -126,6 +141,26 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
 
       {/* Grid of Presets */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Quick Action Card: Create New Preset */}
+        <div
+          onClick={onCreateNewPreset}
+          className="group cursor-pointer rounded-2xl border-2 border-dashed border-zinc-800 hover:border-emerald-500/60 bg-zinc-950/60 hover:bg-emerald-950/10 p-5 flex flex-col items-center justify-center text-center transition-all min-h-[220px]"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-zinc-900 group-hover:bg-emerald-500/20 border border-zinc-700 group-hover:border-emerald-500/40 flex items-center justify-center text-zinc-400 group-hover:text-emerald-400 mb-3 transition-colors">
+            <Plus className="w-6 h-6" />
+          </div>
+          <h3 className="font-bold text-base text-zinc-200 group-hover:text-white transition-colors">
+            Создать новый шаблон
+          </h3>
+          <p className="text-xs text-zinc-400 max-w-xs mt-1.5 leading-relaxed">
+            Сконструировать произвольную тренировку с нуля: сеты, интервалы работы и отдыха, циклы и C-экспорт.
+          </p>
+          <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 group-hover:underline">
+            <span>Открыть в конструкторе</span>
+            <span>→</span>
+          </span>
+        </div>
+
         {presets.map((preset) => (
           <div
             key={preset.id}

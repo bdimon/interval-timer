@@ -8,7 +8,8 @@ import {
   FileCode2, 
   Volume2, 
   VolumeX, 
-  Maximize2 
+  Maximize2,
+  Plus
 } from 'lucide-react';
 import { SoundConfig } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -20,6 +21,7 @@ interface NavbarProps {
   setActiveTab: (tab: ActiveTab) => void;
   soundConfig: SoundConfig;
   setSoundConfig: React.Dispatch<React.SetStateAction<SoundConfig>>;
+  onNewWorkout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   soundConfig,
   setSoundConfig,
+  onNewWorkout,
 }) => {
   const toggleMute = () => {
     setSoundConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
@@ -96,8 +99,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Controls: Audio & Fullscreen & PWA Install */}
+          {/* Controls: New Workout & Audio & Fullscreen & PWA Install */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {onNewWorkout && (
+              <button
+                id="btn-navbar-new-workout"
+                onClick={onNewWorkout}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-semibold transition-all shadow-xs"
+                title="Создать новый сложный цикл / шаблон"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>+ Новый цикл</span>
+              </button>
+            )}
+
             <PWAInstallButton />
 
             <button
@@ -125,7 +140,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Mobile Horizontal Scroll Nav */}
-        <div className="lg:hidden flex overflow-x-auto py-2 gap-1 border-t border-zinc-900 scrollbar-none">
+        <div className="lg:hidden flex overflow-x-auto py-2 gap-1 border-t border-zinc-900 scrollbar-none items-center">
+          {onNewWorkout && (
+            <button
+              id="mobile-nav-new-workout"
+              onClick={onNewWorkout}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs whitespace-nowrap font-bold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+              title="Создать новый сложный цикл / шаблон"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>+ Новый цикл</span>
+            </button>
+          )}
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
