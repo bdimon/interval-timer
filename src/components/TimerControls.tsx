@@ -101,7 +101,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         <button
           id="btn-skip-next"
           onClick={onSkipNext}
-          title="Пропустить фазу (S)"
+          title="Пропустить фазу"
           className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
           <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -111,7 +111,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         <button
           id="btn-reset-timer"
           onClick={onReset}
-          title="Сброс таймера (R)"
+          title="Сброс таймера"
           className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-400 hover:text-red-400 hover:border-red-500/40 hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
           <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -226,8 +226,8 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         </div>
       </div>
 
-      {/* Keyboard Shortcuts Hint */}
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[11px] text-zinc-500 pt-1">
+      {/* Keyboard Shortcuts Hint (hidden on mobile) */}
+      <div className="hidden md:flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[11px] text-zinc-500 pt-1">
         <span className="flex items-center gap-1">
           <Keyboard className="w-3.5 h-3.5" />
           <span>Горячие клавиши:</span>
