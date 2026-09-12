@@ -143,6 +143,17 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
           </select>
           <button
             type="button"
+            id="btn-test-rest-sound"
+            onClick={() => soundEngine.playRestSignal(soundConfig.theme)}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-medium transition-colors"
+            title="Прослушать обновленный сигнал перехода на отдых"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Тест отдыха</span>
+          </button>
+          <button
+            type="button"
+            id="btn-test-final-sound"
             onClick={() => soundEngine.playLastSetSignal(soundConfig.theme)}
             className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-medium transition-colors"
             title="Прослушать особый сигнал финала раунда"

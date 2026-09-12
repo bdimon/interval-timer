@@ -19,6 +19,13 @@ class AudioEngine {
     }
   }
 
+  public resumeContext() {
+    this.initContext();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
   public setVolume(volume: number) {
     this.currentVolume = Math.max(0, Math.min(1, volume));
     if (this.volumeNode && this.ctx) {
@@ -199,32 +206,135 @@ class AudioEngine {
   }
 
   /**
-   * Rest start calming tone
+   * Rest start calming tone - optimized for mobile phone speaker acoustics
+   * Uses dual-tone harmonics in the 700Hz-1600Hz range for maximum clarity on smartphone speakers
    */
   public playRestSignal(theme: SoundTheme = 'athletic') {
     if (this.isMuted) return;
     this.initContext();
     if (!this.ctx || !this.volumeNode) return;
 
+    this.triggerVibrate([160, 90, 200]);
     const t = this.ctx.currentTime;
+
     if (theme === 'boxing') {
-      this.playBellTone(800, t, 0.6);
+      // Deep resonant boxing bell strike with acoustic overtones for mobile speakers
+      this.playHarmonicBell(920, [1380, 1840], t, 0.8);
       return;
     }
 
+    if (theme === 'digital') {
+      // Crisp two-step digital descending rest signal (E6 -> A5)
+      this.playTone(1318, 'square', t, 0.12, 0.65);
+      this.playTone(880, 'square', t + 0.14, 0.32, 0.7);
+      return;
+    }
+
+    if (theme === 'wooden') {
+      // Double resonant descending woodblock tap
+      this.playWoodblockTone(850, t, 0.1);
+      this.playWoodblockTone(620, t + 0.15, 0.22);
+      return;
+    }
+
+    // Default 'athletic': Distinct two-tone descending chime (C6 -> G5)
+    // Plays fundamental tone + harmonic overtone so phone speakers won't cut it off
+    this.playHarmonicNote(1046.5, 1569.75, t, 0.18, 0.75);
+    this.playHarmonicNote(784.0, 1176.0, t + 0.18, 0.45, 0.75);
+  }
+
+  /**
+   * Helper to play a harmonic note with fundamental sine + overtone triangle for mobile clarity
+   */
+  private playHarmonicNote(fundamentalFreq: number, overtoneFreq: number, startTime: number, duration: number, peakGain: number = 0.7) {
+    if (!this.ctx || !this.volumeNode) return;
+
+    const oscFund = this.ctx.createOscillator();
+    const oscOver = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    oscFund.type = 'sine';
+    oscFund.frequency.setValueAtTime(fundamentalFreq, startTime);
+
+    oscOver.type = 'triangle';
+    oscOver.frequency.setValueAtTime(overtoneFreq, startTime);
+
+    // Envelope
+    gain.gain.setValueAtTime(0.01, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+    oscFund.connect(gain);
+    oscOver.connect(gain);
+    gain.connect(this.volumeNode);
+
+    oscFund.start(startTime);
+    oscOver.start(startTime);
+    oscFund.stop(startTime + duration);
+    oscOver.stop(startTime + duration);
+  }
+
+  /**
+   * Helper for resonant boxing bell with overtones
+   */
+  private playHarmonicBell(fundamental: number, overtones: number[], startTime: number, duration: number) {
+    if (!this.ctx || !this.volumeNode) return;
+
+    const mainOsc = this.ctx.createOscillator();
+    const mainGain = this.ctx.createGain();
+    mainOsc.type = 'triangle';
+    mainOsc.frequency.setValueAtTime(fundamental, startTime);
+    mainGain.gain.setValueAtTime(0.75, startTime);
+    mainGain.gain.exponentialRampToValueAtTime(0.0005, startTime + duration);
+    mainOsc.connect(mainGain);
+    mainGain.connect(this.volumeNode);
+    mainOsc.start(startTime);
+    mainOsc.stop(startTime + duration);
+
+    overtones.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      const gainVal = 0.4 / (idx + 1);
+      gain.gain.setValueAtTime(gainVal, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.0005, startTime + duration * 0.7);
+      osc.connect(gain);
+      gain.connect(this.volumeNode!);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    });
+  }
+
+  /**
+   * Resonant woodblock sound
+   */
+  private playWoodblockTone(freq: number, startTime: number, duration: number) {
+    if (!this.ctx || !this.volumeNode) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(520, t);
-    osc.frequency.exponentialRampToValueAtTime(392, t + 0.28); // Descending relax tone
-
-    gain.gain.setValueAtTime(0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.4, startTime + duration);
+    gain.gain.setValueAtTime(0.85, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
     osc.connect(gain);
     gain.connect(this.volumeNode);
-    osc.start(t);
-    osc.stop(t + 0.3);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+  }
+
+  /**
+   * Vibration API wrapper for tactile feedback on mobile devices
+   */
+  private triggerVibrate(pattern: number | number[]) {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch {
+        // Ignore vibration restrictions
+      }
+    }
   }
 
   /**
@@ -242,13 +352,13 @@ class AudioEngine {
     });
   }
 
-  private playTone(freq: number, type: OscillatorType, startTime: number, duration: number) {
+  private playTone(freq: number, type: OscillatorType, startTime: number, duration: number, gainLevel: number = 0.5) {
     if (!this.ctx || !this.volumeNode) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, startTime);
-    gain.gain.setValueAtTime(0.5, startTime);
+    gain.gain.setValueAtTime(gainLevel, startTime);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
     osc.connect(gain);
     gain.connect(this.volumeNode);

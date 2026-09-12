@@ -481,6 +481,7 @@ export default function App() {
 
   // User Actions
   const handleStart = () => {
+    soundEngine.resumeContext();
     if (phase === 'IDLE' || phase === 'COMPLETED') {
       resetTimer();
     }
@@ -498,6 +499,7 @@ export default function App() {
   };
 
   const handleResume = () => {
+    soundEngine.resumeContext();
     if (!isRunning || !isPaused) return;
     setIsPaused(false);
     setPhase(previousPhase === 'PAUSED' ? 'WORK' : previousPhase);
