@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090b" />
+      <stop offset="100%" stop-color="#18181b" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Canvas with soft rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Outer subtle tech track -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#27272a" stroke-width="18" />
+
+  <!-- Active Circular Interval Arc -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="url(#ringGrad)" stroke-width="22" stroke-linecap="round" stroke-dasharray="800 270" stroke-dashoffset="60" transform="rotate(-90 256 256)" />
+
+  <!-- Inner Hub -->
+  <circle cx="256" cy="256" r="118" fill="#18181b" stroke="#3f3f46" stroke-width="4" />
+
+  <!-- Modern C:T Monogram / Stopwatch Geometry -->
+  <!-- Stopwatch Top Button -->
+  <rect x="238" y="52" width="36" height="24" rx="6" fill="#10b981" />
+  <rect x="246" y="74" width="20" height="14" rx="2" fill="#059669" />
+
+  <!-- Central "C:T" Typography and Digits Symbol -->
+  <g fill="none" stroke="url(#accentGrad)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Stylized "C" -->
+    <path d="M 218 214 C 205 200, 175 200, 162 216 C 146 235, 146 277, 162 296 C 175 312, 205 312, 218 298" />
+  </g>
+
+  <!-- Colon Dots -->
+  <circle cx="240" cy="242" r="7" fill="#34d399" />
+  <circle cx="240" cy="270" r="7" fill="#34d399" />
+
+  <!-- Stylized "T" -->
+  <g fill="none" stroke="#f4f4f5" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 268 214 L 324 214" />
+    <path d="M 296 214 L 296 300" />
+  </g>
+
+  <!-- Pulse dots on bottom -->
+  <circle cx="256" cy="410" r="8" fill="#10b981" />
+</svg>

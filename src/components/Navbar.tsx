@@ -11,6 +11,7 @@ import {
   Maximize2 
 } from 'lucide-react';
 import { SoundConfig } from '../types';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type ActiveTab = 'timer' | 'editor' | 'terminal' | 'presets' | 'journal' | 'c_code';
 
@@ -95,8 +96,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Controls: Audio & Fullscreen */}
+          {/* Controls: Audio & Fullscreen & PWA Install */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <PWAInstallButton />
+
             <button
               id="btn-quick-mute"
               onClick={toggleMute}

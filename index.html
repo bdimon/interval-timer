@@ -2,17 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Interval Timer C & Web Suite</title>
-    <meta name="description" content="Configurable interval timer with C core architecture, sound signals, metronome countdown, custom complex cycles, presets, session logging, and CLI/GUI/Web/Android portability." />
+    <meta name="description" content="Configurable interval timer with C core architecture, sound signals, metronome countdown, custom complex cycles, presets, session logging, and offline PWA support." />
     <meta property="og:title" content="Interval Timer C & Web Suite" />
-    <meta property="og:description" content="Configurable interval timer with C core architecture, sound signals, metronome countdown, custom complex cycles, presets, session logging, and CLI/GUI/Web/Android portability." />
+    <meta property="og:description" content="Configurable interval timer with C core architecture, sound signals, metronome countdown, custom complex cycles, presets, session logging, and offline PWA support." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- PWA & Mobile Web App Meta -->
+    <meta name="theme-color" content="#09090b" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Intervals" />
+
+    <!-- Icons & Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
   </head>
-  <body>
+  <body class="bg-zinc-950 text-zinc-100 antialiased selection:bg-emerald-500/30 selection:text-emerald-300">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register Service Worker for standalone offline support
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('/sw.js')
+            .then((registration) => {
+              console.log('PWA ServiceWorker registered with scope:', registration.scope);
+            })
+            .catch((err) => {
+              console.log('PWA ServiceWorker registration failed:', err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
-

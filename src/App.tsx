@@ -16,6 +16,7 @@ import {
 } from './types';
 import { DEFAULT_WORKOUT_PRESETS } from './utils/defaultPresets';
 import { soundEngine } from './utils/audioEngine';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 const STORAGE_PRESETS_KEY = 'c_interval_timer_presets_v1';
 const STORAGE_HISTORY_KEY = 'c_interval_timer_history_v1';
@@ -736,6 +737,7 @@ export default function App() {
       </main>
 
       {/* Persistent Bottom Status Bar */}
+      <OfflineIndicator />
       <footer className="bg-zinc-950 border-t border-zinc-900 py-3 px-4 sm:px-8 text-xs text-zinc-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-3">
