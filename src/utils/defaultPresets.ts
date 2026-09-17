@@ -249,35 +249,185 @@ export function getDefaultPresetById(id: string, lang: Language = 'ru'): Workout
   return list.find((p) => p.id === id);
 }
 
+const DEFAULT_NEW_CYCLE_NAMES = [
+  'Create New Complex Cycle',
+  'Создать новый сложный цикл',
+  'Створити новий складний цикл',
+  'New Complex Cycle',
+  'Новый сложный цикл',
+  'Новий складний цикл',
+  'New Cycle',
+  'Новый цикл',
+  'Новий цикл',
+  'Create New Cycle',
+  'Создать новый цикл',
+  'Створити новий цикл',
+];
+
+export function isDefaultNewCycleName(name: string | undefined | null): boolean {
+  if (!name) return false;
+  const trimmed = name.trim().toLowerCase();
+  return DEFAULT_NEW_CYCLE_NAMES.some((n) => n.toLowerCase() === trimmed);
+}
+
+export function getNewCycleDefaultName(lang: Language = 'ru'): string {
+  switch (lang) {
+    case 'en':
+      return 'Create New Complex Cycle';
+    case 'uk':
+      return 'Створити новий складний цикл';
+    case 'ru':
+    default:
+      return 'Создать новый сложный цикл';
+  }
+}
+
+const DEFAULT_CUSTOM_DESCRIPTIONS = [
+  'Индивидуальная настройка интервалов: вы можете установить счетчик в 0с или удалить любой счетчик (работы или отдыха) в сете.',
+  'Custom interval configuration: you can set counters to 0s or remove either work or rest counter in any set.',
+  'Індивідуальне налаштування інтервалів: ви можете встановити лічильник у 0с або видалити будь-який лічильник (роботи чи відпочинку) в сеті.',
+  'Індивідуальне налаштування інтервалів: вы можете встановити лічильник у 0с або видалити будь-який лічильник (роботи чи відпочинку) в сеті.',
+];
+
+export function isDefaultCustomDesc(desc: string | undefined | null): boolean {
+  if (!desc) return false;
+  const trimmed = desc.trim().toLowerCase();
+  return DEFAULT_CUSTOM_DESCRIPTIONS.some((d) => d.trim().toLowerCase() === trimmed);
+}
+
+export function getCustomDescByLang(lang: Language = 'ru'): string {
+  switch (lang) {
+    case 'en':
+      return 'Custom interval configuration: you can set counters to 0s or remove either work or rest counter in any set.';
+    case 'uk':
+      return 'Індивідуальне налаштування інтервалів: ви можете встановити лічильник у 0с або видалити будь-який лічильник (роботи чи відпочинку) в сеті.';
+    case 'ru':
+    default:
+      return 'Индивидуальная настройка интервалов: вы можете установить счетчик в 0с или удалить любой счетчик (работы или отдыха) в сете.';
+  }
+}
+
+export function localizeGenericSetName(name: string | undefined | null, lang: Language = 'ru'): string {
+  if (!name) return '';
+  const trimmed = name.trim();
+
+  // Match "Set 1", "Сет 1", "Set: 1", etc.
+  const setMatch = trimmed.match(/^(?:Set|Сет)\s*[:#-]?\s*(\d+)(.*)$/i);
+  if (setMatch) {
+    const num = setMatch[1];
+    const extra = setMatch[2] || '';
+    const prefix = lang === 'en' ? 'Set' : 'Сет';
+    return `${prefix} ${num}${extra}`;
+  }
+
+  // Match "Round 1", "Раунд 1", "Round: 1", etc.
+  const roundMatch = trimmed.match(/^(?:Round|Раунд)\s*[:#-]?\s*(\d+)(.*)$/i);
+  if (roundMatch) {
+    const num = roundMatch[1];
+    const extra = roundMatch[2] || '';
+    const prefix = lang === 'en' ? 'Round' : 'Раунд';
+    return `${prefix} ${num}${extra}`;
+  }
+
+  // Match "Boxing Round 1" / "Бокс Раунд 1" / "Боксерський Раунд 1"
+  const boxingMatch = trimmed.match(/^(?:Boxing Round|Бокс Раунд|Боксерський Раунд)\s*[:#-]?\s*(\d+)(.*)$/i);
+  if (boxingMatch) {
+    const num = boxingMatch[1];
+    const extra = boxingMatch[2] || '';
+    const prefix = lang === 'en' ? 'Boxing Round' : lang === 'uk' ? 'Боксерський Раунд' : 'Бокс Раунд';
+    return `${prefix} ${num}${extra}`;
+  }
+
+  // Match "Sprint 1" / "Спринт 1"
+  const sprintMatch = trimmed.match(/^(?:Sprint|Спринт)\s*[:#-]?\s*(\d+)(.*)$/i);
+  if (sprintMatch) {
+    const num = sprintMatch[1];
+    const extra = sprintMatch[2] || '';
+    const prefix = lang === 'en' ? 'Sprint' : 'Спринт';
+    return `${prefix} ${num}${extra}`;
+  }
+
+  return name;
+}
+
 export function getLocalizedPlanName(plan: WorkoutPlan | null | undefined, lang: Language = 'ru'): string {
   if (!plan) return '';
   const def = getDefaultPresetById(plan.id, lang);
-  if (def && (!plan.isCustom || plan.id === 'tabata-classic')) {
-    return def.name;
+  if (def) {
+    const isMatchingBuiltinName = Object.values(DEFAULT_PRESETS_BY_LANG).some((list) =>
+      list.some((p) => p.id === plan.id && p.name.trim().toLowerCase() === plan.name.trim().toLowerCase())
+    );
+    if (!plan.isCustom || plan.id === 'tabata-classic' || isMatchingBuiltinName) {
+      return def.name;
+    }
   }
+
+  if (isDefaultNewCycleName(plan.name)) {
+    return getNewCycleDefaultName(lang);
+  }
+
   return plan.name;
 }
 
 export function getLocalizedSetName(plan: WorkoutPlan | null | undefined, setIndex: number, lang: Language = 'ru'): string {
   if (!plan || !plan.sets || !plan.sets[setIndex]) return '';
+  const currentSet = plan.sets[setIndex];
   const def = getDefaultPresetById(plan.id, lang);
-  if (def && def.sets && def.sets[setIndex] && (!plan.isCustom || plan.id === 'tabata-classic')) {
-    return def.sets[setIndex].name;
+  if (def && def.sets && def.sets[setIndex]) {
+    const isMatchingBuiltinSet = Object.values(DEFAULT_PRESETS_BY_LANG).some((list) => {
+      const p = list.find((item) => item.id === plan.id);
+      return p?.sets[setIndex]?.name.trim().toLowerCase() === currentSet.name.trim().toLowerCase();
+    });
+    if (!plan.isCustom || plan.id === 'tabata-classic' || isMatchingBuiltinSet) {
+      return def.sets[setIndex].name;
+    }
   }
-  return plan.sets[setIndex].name;
+
+  return localizeGenericSetName(currentSet.name, lang);
 }
 
 export function localizeWorkoutPlan(plan: WorkoutPlan, lang: Language = 'ru'): WorkoutPlan {
+  if (!plan) return plan;
+
+  // 1. If it matches a built-in preset
   const def = getDefaultPresetById(plan.id, lang);
-  if (!def) return plan;
-  if (plan.isCustom && plan.id !== 'tabata-classic') return plan;
+  if (def) {
+    const isMatchingBuiltinName = Object.values(DEFAULT_PRESETS_BY_LANG).some((list) =>
+      list.some((p) => p.id === plan.id && p.name.trim().toLowerCase() === plan.name.trim().toLowerCase())
+    );
+    if (!plan.isCustom || plan.id === 'tabata-classic' || isMatchingBuiltinName) {
+      return {
+        ...plan,
+        name: def.name,
+        description: def.description,
+        sets: plan.sets.map((s, idx) => ({
+          ...s,
+          name: def.sets[idx] ? def.sets[idx].name : localizeGenericSetName(s.name, lang),
+        })),
+      };
+    }
+  }
+
+  // 2. Custom plan or new cycle: localize default titles, descriptions, and generic sets
+  let nextName = plan.name;
+  if (isDefaultNewCycleName(plan.name)) {
+    nextName = getNewCycleDefaultName(lang);
+  }
+
+  let nextDesc = plan.description;
+  if (isDefaultCustomDesc(plan.description)) {
+    nextDesc = getCustomDescByLang(lang);
+  }
+
+  const nextSets = plan.sets.map((s) => ({
+    ...s,
+    name: localizeGenericSetName(s.name, lang),
+  }));
+
   return {
     ...plan,
-    name: def.name,
-    description: def.description,
-    sets: plan.sets.map((s, idx) => ({
-      ...s,
-      name: def.sets[idx] ? def.sets[idx].name : s.name,
-    })),
+    name: nextName,
+    description: nextDesc,
+    sets: nextSets,
   };
 }

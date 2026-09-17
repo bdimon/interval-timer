@@ -18,7 +18,8 @@ import {
   DEFAULT_WORKOUT_PRESETS, 
   getDefaultPresets, 
   localizeWorkoutPlan, 
-  getLocalizedPlanName 
+  getLocalizedPlanName,
+  localizeGenericSetName
 } from './utils/defaultPresets';
 import { soundEngine } from './utils/audioEngine';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -103,7 +104,6 @@ export default function App() {
       if (savedDraft) {
         const parsed = JSON.parse(savedDraft);
         if (isValidWorkoutPlan(parsed)) {
-          if (parsed.isCustom && parsed.id !== 'tabata-classic') return parsed;
           return localizeWorkoutPlan(parsed, initLang);
         }
       }
@@ -118,23 +118,25 @@ export default function App() {
     const defaults = getDefaultPresets(language);
     setPresets((prev) =>
       prev.map((p) => {
-        if (p.isCustom && p.id !== 'tabata-classic') return p;
+        if (p.isCustom && p.id !== 'tabata-classic') {
+          return localizeWorkoutPlan(p, language);
+        }
         const matching = defaults.find((d) => d.id === p.id);
-        if (!matching) return p;
+        if (!matching) return localizeWorkoutPlan(p, language);
         return {
           ...p,
           name: matching.name,
           description: matching.description,
           sets: p.sets.map((s, idx) => ({
             ...s,
-            name: matching.sets[idx]?.name ?? s.name,
+            name: matching.sets[idx]?.name ?? localizeGenericSetName(s.name, language),
           })),
         };
       })
     );
 
-    setCurrentPlan((prev) => (prev.isCustom && prev.id !== 'tabata-classic' ? prev : localizeWorkoutPlan(prev, language)));
-    setEditorPlan((prev) => (prev.isCustom && prev.id !== 'tabata-classic' ? prev : localizeWorkoutPlan(prev, language)));
+    setCurrentPlan((prev) => localizeWorkoutPlan(prev, language));
+    setEditorPlan((prev) => localizeWorkoutPlan(prev, language));
   }, [language]);
 
   // ID of the preset currently being edited (if editing an existing template)

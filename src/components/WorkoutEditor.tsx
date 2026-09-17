@@ -21,7 +21,7 @@ import {
 import { WorkoutPlan, IntervalSet } from '../types';
 import { exportPlanToCHeader } from '../utils/cExportHelper';
 import { useI18n } from '../i18n/context';
-import { getLocalizedPlanName } from '../utils/defaultPresets';
+import { getLocalizedPlanName, localizeWorkoutPlan } from '../utils/defaultPresets';
 
 interface WorkoutEditorProps {
   plan: WorkoutPlan;
@@ -59,6 +59,18 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
     setJustSavedUpdate(false);
     setJustSavedNew(false);
   }, [editingPresetId]);
+
+  useEffect(() => {
+    setLastSavedSnapshot((prevSnapshot) => {
+      try {
+        const prevObj = JSON.parse(prevSnapshot);
+        const localizedPrev = localizeWorkoutPlan(prevObj, language);
+        return JSON.stringify(localizedPrev);
+      } catch {
+        return prevSnapshot;
+      }
+    });
+  }, [language]);
 
   const isPlanModified = JSON.stringify(plan) !== lastSavedSnapshot;
 
