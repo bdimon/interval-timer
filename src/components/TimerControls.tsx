@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SoundConfig, SoundTheme } from '../types';
 import { soundEngine } from '../utils/audioEngine';
+import { useI18n } from '../i18n/context';
 
 interface TimerControlsProps {
   isRunning: boolean;
@@ -38,6 +39,8 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
   soundConfig,
   setSoundConfig,
 }) => {
+  const { t } = useI18n();
+
   const handlePrimaryClick = () => {
     if (!isRunning) {
       onStart();
@@ -49,10 +52,10 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
   };
 
   const soundThemes: { id: SoundTheme; label: string }[] = [
-    { id: 'athletic', label: 'Атлетический зуммер' },
-    { id: 'boxing', label: 'Боксёрский гонг' },
-    { id: 'digital', label: 'Электронный писк' },
-    { id: 'wooden', label: 'Деревянный метроном' },
+    { id: 'athletic', label: t('theme_athletic') },
+    { id: 'boxing', label: t('theme_boxing') },
+    { id: 'digital', label: t('theme_digital') },
+    { id: 'wooden', label: t('theme_wooden') },
   ];
 
   return (
@@ -63,7 +66,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         <button
           id="btn-step-prev"
           onClick={onSkipPrev}
-          title="Предыдущий сет"
+          title={t('btn_prev_set')}
           className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
           <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -82,17 +85,17 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
           {!isRunning ? (
             <>
               <Play className="w-5 h-5 fill-current shrink-0" />
-              <span>СТАРТ ТРЕНИРОВКИ</span>
+              <span>{t('btn_start')}</span>
             </>
           ) : isPaused ? (
             <>
               <Play className="w-5 h-5 fill-current shrink-0" />
-              <span>ПРОДОЛЖИТЬ</span>
+              <span>{t('btn_resume')}</span>
             </>
           ) : (
             <>
               <Pause className="w-5 h-5 fill-current shrink-0" />
-              <span>ПАУЗА</span>
+              <span>{t('btn_pause')}</span>
             </>
           )}
         </button>
@@ -101,7 +104,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         <button
           id="btn-skip-next"
           onClick={onSkipNext}
-          title="Пропустить фазу"
+          title={t('btn_next_set')}
           className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
           <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -111,7 +114,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         <button
           id="btn-reset-timer"
           onClick={onReset}
-          title="Сброс таймера"
+          title={t('btn_reset')}
           className="p-2.5 sm:p-3 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-400 hover:text-red-400 hover:border-red-500/40 hover:bg-zinc-800 transition-all active:scale-95 shrink-0"
         >
           <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -124,7 +127,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 shrink-0">
             <Sliders className="w-4 h-4 text-zinc-500 shrink-0" />
-            <span className="font-medium text-zinc-300 whitespace-nowrap">Профиль:</span>
+            <span className="font-medium text-zinc-300 whitespace-nowrap">{t('sound_theme')}:</span>
           </div>
 
           <select
@@ -151,20 +154,20 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
               id="btn-test-rest-sound"
               onClick={() => soundEngine.playRestSignal(soundConfig.theme)}
               className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-medium transition-colors shrink-0"
-              title="Прослушать обновленный сигнал перехода на отдых"
+              title="Test sound"
             >
               <Volume2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span>Тест отдыха</span>
+              <span>{t('phase_rest')}</span>
             </button>
             <button
               type="button"
               id="btn-test-final-sound"
               onClick={() => soundEngine.playLastSetSignal(soundConfig.theme)}
               className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-medium transition-colors shrink-0"
-              title="Прослушать особый сигнал финала раунда"
+              title="Test sound"
             >
               <Volume2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Тест финала</span>
+              <span>{t('badge_final_round')}</span>
             </button>
           </div>
         </div>
@@ -186,7 +189,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
               className="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-emerald-500 w-4 h-4"
             />
             <span className="text-zinc-300 whitespace-nowrap text-xs">
-              Метроном за 3 сек
+              {t('sound_metronome')} (3s)
             </span>
           </label>
 
@@ -197,7 +200,7 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
                 setSoundConfig((prev) => ({ ...prev, enabled: !prev.enabled }))
               }
               className="text-zinc-400 hover:text-white shrink-0"
-              title={soundConfig.enabled ? 'Выключить звук' : 'Включить звук'}
+              title={soundConfig.enabled ? t('nav_sound_off') : t('nav_sound_on')}
             >
               {soundConfig.enabled ? (
                 <Volume2 className="w-4 h-4 text-emerald-400" />
@@ -230,19 +233,19 @@ export const TimerControls: React.FC<TimerControlsProps> = ({
       <div className="hidden md:flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-[11px] text-zinc-500 pt-1">
         <span className="flex items-center gap-1">
           <Keyboard className="w-3.5 h-3.5" />
-          <span>Горячие клавиши:</span>
+          <span>{t('hotkeys_title')}:</span>
         </span>
         <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-400">
-          [Пробел] Пауза
+          [Space] {t('btn_start')} / {t('btn_pause')}
         </span>
         <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-400">
-          [R] Сброс
+          [R] {t('btn_reset')}
         </span>
         <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-400">
-          [S] Пропуск
+          [← / →] {t('timer_set')}
         </span>
         <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-400">
-          [M] Звук
+          [M] {t('sound_volume')}
         </span>
       </div>
     </div>

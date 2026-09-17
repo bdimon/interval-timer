@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { WorkoutPlan, IntervalSet } from '../types';
 import { exportPlanToCHeader } from '../utils/cExportHelper';
+import { useI18n } from '../i18n/context';
+import { getLocalizedPlanName } from '../utils/defaultPresets';
 
 interface WorkoutEditorProps {
   plan: WorkoutPlan;
@@ -42,6 +44,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
   onResetToOriginalPreset,
   onCreateBlankPlan,
 }) => {
+  const { t, language } = useI18n();
   const [showCModal, setShowCModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [savedSuccessMsg, setSavedSuccessMsg] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
   const formatDuration = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
     const secs = totalSec % 60;
-    return `${mins} мин ${secs} сек`;
+    return `${mins} ${t('unit_min')} ${secs} ${t('unit_sec')}`;
   };
 
   const handleUpdateSet = (index: number, updates: Partial<IntervalSet>) => {
@@ -89,11 +92,15 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
 
   const handleAddSet = () => {
     const newIndex = plan.sets.length + 1;
+    const isTabata = plan.id === 'tabata-classic';
+    const defaultPrefix = isTabata 
+      ? (language === 'en' ? 'Round' : 'Раунд')
+      : (language === 'en' ? 'Set' : language === 'uk' ? 'Сет' : 'Сет');
     const newSet: IntervalSet = {
       id: `set-${Date.now()}-${newIndex}`,
-      name: `Сет ${newIndex}`,
-      workSeconds: 30,
-      restSeconds: 15,
+      name: `${defaultPrefix} ${newIndex}`,
+      workSeconds: isTabata ? 20 : 30,
+      restSeconds: isTabata ? 10 : 15,
     };
     onChangePlan((prev) => ({
       ...prev,
@@ -106,7 +113,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
     const duplicated: IntervalSet = {
       ...target,
       id: `set-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: `${target.name} (Копия)`,
+      name: `${target.name} (2)`,
     };
     onChangePlan((prev) => {
       const nextSets = [...prev.sets];
@@ -146,7 +153,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         restSeconds: s.restSeconds > 0 ? s.restSeconds : 15,
       })),
     }));
-    notifySuccess('Удален счетчик работы во всех сетах (только отдых)');
+    notifySuccess(t('editor_remove_work_all'));
   };
 
   const handleRemoveAllRestCounters = () => {
@@ -159,7 +166,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         workSeconds: s.workSeconds > 0 ? s.workSeconds : 30,
       })),
     }));
-    notifySuccess('Удален счетчик отдыха во всех сетах (непрерывная работа)');
+    notifySuccess(t('editor_remove_rest_all'));
   };
 
   const handleRestoreAllWorkCounters = () => {
@@ -170,7 +177,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         workSeconds: s.workSeconds > 0 ? s.workSeconds : 30,
       })),
     }));
-    notifySuccess('Восстановлена работа во всех сетах (+30 сек)');
+    notifySuccess(t('editor_add_work_all'));
   };
 
   const handleRestoreAllRestCounters = () => {
@@ -181,13 +188,17 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         restSeconds: s.restSeconds > 0 ? s.restSeconds : 15,
       })),
     }));
-    notifySuccess('Восстановлен отдых во всех сетах (+15 сек)');
+    notifySuccess(t('editor_add_rest_all'));
   };
 
   const handleGenerateBatch = () => {
+    const isTabata = plan.id === 'tabata-classic';
+    const defaultPrefix = isTabata 
+      ? (language === 'en' ? 'Round' : 'Раунд')
+      : (language === 'en' ? 'Set' : language === 'uk' ? 'Сет' : 'Сет');
     const newSets: IntervalSet[] = Array.from({ length: genCount }).map((_, i) => ({
       id: `batch-${Date.now()}-${i + 1}`,
-      name: `Сет ${i + 1}`,
+      name: `${defaultPrefix} ${i + 1}`,
       workSeconds: Math.max(0, genWork),
       restSeconds: Math.max(0, genRest),
     }));
@@ -195,7 +206,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
       ...prev,
       sets: newSets,
     }));
-    notifySuccess(`Сгенерировано ${genCount} сетов`);
+    notifySuccess(`${t('editor_gen_btn')}: ${genCount}`);
   };
 
   const notifySuccess = (msg: string) => {
@@ -207,7 +218,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
     onSavePresetUpdate(plan);
     setLastSavedSnapshot(JSON.stringify(plan));
     setJustSavedUpdate(true);
-    notifySuccess('Изменения шаблона сохранены!');
+    notifySuccess(t('editor_btn_changes_saved'));
     setTimeout(() => {
       setJustSavedUpdate(false);
     }, 3500);
@@ -217,7 +228,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
     onSaveAsNewPreset(plan);
     setLastSavedSnapshot(JSON.stringify(plan));
     setJustSavedNew(true);
-    notifySuccess('Сохранен как новый шаблон!');
+    notifySuccess(t('editor_btn_saved_as_new'));
     setTimeout(() => {
       setJustSavedNew(false);
     }, 3500);
@@ -240,10 +251,10 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
           <div className="flex items-center gap-2.5">
             <BookmarkCheck className="w-5 h-5 text-emerald-400 shrink-0" />
             <div>
-              <span className="text-zinc-300 font-medium">Редактирование шаблона: </span>
-              <strong className="text-white font-bold">{plan.name}</strong>
+              <span className="text-zinc-300 font-medium">{t('editor_editing_badge')}: </span>
+              <strong className="text-white font-bold">{getLocalizedPlanName(plan, language) || plan.name}</strong>
               <p className="text-xs text-emerald-300/80 mt-0.5">
-                Все изменения сохраняются в черновике автоматически при переходе между вкладками.
+                {t('editor_autosave_badge')}
               </p>
             </div>
           </div>
@@ -256,10 +267,10 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                   setJustSavedUpdate(false);
                 }}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-xs text-zinc-300 transition-colors"
-                title="Сбросить все внесенные изменения к оригиналу шаблона"
+                title={t('editor_reset_draft')}
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Сброс к оригиналу</span>
+                <span>{t('editor_reset_draft')}</span>
               </button>
             )}
             <button
@@ -273,29 +284,22 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                   ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-emerald-500/25 ring-1 ring-emerald-400'
                   : 'bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/60'
               }`}
-              title={
-                justSavedUpdate
-                  ? 'Все изменения успешно сохранены!'
-                  : isPlanModified
-                  ? 'Есть несохраненные изменения: нажмите, чтобы обновить шаблон'
-                  : 'Все изменения уже сохранены в шаблоне'
-              }
             >
               {justSavedUpdate ? (
                 <>
                   <Check className="w-3.5 h-3.5 stroke-[2.5] text-zinc-950" />
-                  <span>Сохранено в шаблон ✓</span>
+                  <span>{t('editor_btn_changes_saved')}</span>
                 </>
               ) : isPlanModified ? (
                 <>
                   <Save className="w-3.5 h-3.5" />
-                  <span>Сохранить в шаблон</span>
+                  <span>{t('editor_btn_save_changes')}</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-300 ml-0.5 animate-pulse" />
                 </>
               ) : (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Шаблон сохранен ✓</span>
+                  <span>{t('editor_btn_changes_saved')}</span>
                 </>
               )}
             </button>
@@ -308,17 +312,17 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <span>Конструктор сложных циклов</span>
+              <span>{t('editor_title')}</span>
             </h2>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              C-Ready Struct
+              {t('editor_c_ready_badge')}
             </span>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-              Автосохранение при смене вкладок ✓
+              {t('editor_autosave_badge')}
             </span>
           </div>
           <p className="text-sm text-zinc-400 mt-1">
-            Индивидуальная настройка интервалов: вы можете установить счетчик в 0с или удалить любой счетчик (работы или отдыха) в сете.
+            {t('editor_custom_desc')}
           </p>
         </div>
 
@@ -329,10 +333,9 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
               id="btn-create-new-cycle"
               onClick={onCreateBlankPlan}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
-              title="Начать новый сложный цикл с чистого листа"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Создать новый сложный цикл</span>
+              <span>{t('editor_btn_new_cycle')}</span>
             </button>
           )}
 
@@ -343,7 +346,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold transition-colors"
           >
             <FileCode2 className="w-4 h-4 text-cyan-400" />
-            <span>C Заголовок (.h)</span>
+            <span>{t('editor_btn_c_header')}</span>
           </button>
 
           {/* Save Update Preset if editing */}
@@ -358,29 +361,22 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25 ring-1 ring-emerald-400/50'
                   : 'bg-zinc-900 border border-emerald-500/40 text-emerald-400 hover:bg-zinc-800'
               }`}
-              title={
-                justSavedUpdate
-                  ? 'Все изменения успешно записаны в шаблон'
-                  : isPlanModified
-                  ? 'Сохранить внесенные изменения в текущий шаблон'
-                  : 'Все изменения уже сохранены'
-              }
             >
               {justSavedUpdate ? (
                 <>
                   <Check className="w-4 h-4 stroke-[2.5] text-zinc-950" />
-                  <span>Изменения сохранены ✓</span>
+                  <span>{t('editor_btn_changes_saved')}</span>
                 </>
               ) : isPlanModified ? (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Сохранить изменения</span>
-                  <span className="w-2 h-2 rounded-full bg-amber-400 ml-0.5 animate-pulse" title="Есть несохраненные изменения" />
+                  <span>{t('editor_btn_save_changes')}</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 ml-0.5 animate-pulse" />
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4 text-emerald-400" />
-                  <span>Изменения сохранены ✓</span>
+                  <span>{t('editor_btn_changes_saved')}</span>
                 </>
               )}
             </button>
@@ -399,12 +395,12 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             {justSavedNew ? (
               <>
                 <Check className="w-4 h-4 stroke-[2.5] text-zinc-950" />
-                <span>Сохранен как новый ✓</span>
+                <span>{t('editor_btn_saved_as_new')}</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4 text-emerald-400" />
-                <span>Сохранить как новый</span>
+                <span>{t('editor_save_as_new')}</span>
               </>
             )}
           </button>
@@ -415,10 +411,9 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             onClick={() => onApplyPlan(plan, true)}
             disabled={hasInvalidSet}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
-            title={hasInvalidSet ? 'Внимание: есть сет, где удалены оба счетчика' : 'Применить план и запустить таймер'}
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>Запустить таймер</span>
+            <span>{t('editor_btn_start_timer')}</span>
           </button>
         </div>
       </div>
@@ -436,9 +431,9 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-3.5 flex items-center gap-3 text-amber-200 text-xs">
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
           <div>
-            <strong>Внимание: в одном или нескольких сетах удалены оба счетчика (работа 0с и отдых 0с).</strong>
+            <strong>{t('editor_warning_invalid_set')}</strong>
             <p className="mt-0.5 text-amber-300/80">
-              В каждом сете должен присутствовать хотя бы один счетчик (работа или отдых), либо удалите пустой сет кнопкой корзины.
+              {t('editor_warning_invalid_desc')}
             </p>
           </div>
         </div>
@@ -449,14 +444,14 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         {/* Name */}
         <div className="sm:col-span-2">
           <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-            Название тренировки / программы
+            {t('editor_plan_name_label')}
           </label>
           <input
             type="text"
             value={plan.name}
             onChange={(e) => onChangePlan((p) => ({ ...p, name: e.target.value }))}
             className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
-            placeholder="Например: HIIT Пирамида"
+            placeholder={t('editor_plan_name_placeholder')}
           />
         </div>
 
@@ -464,17 +459,17 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-medium text-zinc-400">
-              Подготовка (сек)
+              {t('editor_prep_sec')}
             </label>
             {plan.prepSeconds > 0 ? (
               <button
                 type="button"
                 onClick={() => onChangePlan((p) => ({ ...p, prepSeconds: 0 }))}
                 className="text-[11px] text-zinc-500 hover:text-rose-400 flex items-center gap-0.5"
-                title="Удалить подготовку (сбросить на 0с)"
+                title={t('editor_delete_counter')}
               >
                 <X className="w-3 h-3" />
-                <span>Удалить (0с)</span>
+                <span>{t('editor_delete_counter')}</span>
               </button>
             ) : (
               <button
@@ -482,7 +477,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                 onClick={() => onChangePlan((p) => ({ ...p, prepSeconds: 5 }))}
                 className="text-[11px] text-emerald-400 hover:underline flex items-center gap-0.5"
               >
-                <span>+ Добавить (5с)</span>
+                <span>{t('editor_add_counter')} (5{t('unit_sec')})</span>
               </button>
             )}
           </div>
@@ -502,7 +497,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         {/* Cycles */}
         <div>
           <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-            Повторение всех сетов (Циклов)
+            {t('editor_cycles')}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -525,17 +520,17 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-medium text-zinc-400">
-                Отдых между циклами (сек)
+                {t('editor_cycle_rest')}
               </label>
               {plan.cycleRestSeconds > 0 ? (
                 <button
                   type="button"
                   onClick={() => onChangePlan((p) => ({ ...p, cycleRestSeconds: 0 }))}
                   className="text-[11px] text-zinc-500 hover:text-rose-400 flex items-center gap-0.5"
-                  title="Удалить отдых между циклами (0с)"
+                  title={t('editor_delete_counter')}
                 >
                   <X className="w-3 h-3" />
-                  <span>Удалить (0с)</span>
+                  <span>{t('editor_delete_counter')}</span>
                 </button>
               ) : (
                 <button
@@ -543,7 +538,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                   onClick={() => onChangePlan((p) => ({ ...p, cycleRestSeconds: 60 }))}
                   className="text-[11px] text-emerald-400 hover:underline flex items-center gap-0.5"
                 >
-                  <span>+ Добавить (60с)</span>
+                  <span>{t('editor_add_counter')} (60{t('unit_sec')})</span>
                 </button>
               )}
             </div>
@@ -566,7 +561,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
 
         {/* Summary Duration Badge */}
         <div className="flex flex-col justify-center rounded-xl bg-zinc-900/90 border border-zinc-800 p-3">
-          <span className="text-[11px] text-zinc-400 font-medium">Общее время тренировки:</span>
+          <span className="text-[11px] text-zinc-400 font-medium">{t('editor_total_time')}</span>
           <span className="text-base font-bold text-emerald-400 font-mono">
             {formatDuration(calculateTotalSeconds())}
           </span>
@@ -578,12 +573,12 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-emerald-400" />
           <span className="text-xs font-semibold text-zinc-200">
-            Быстрый генератор равномерных сетов:
+            {t('editor_quick_gen_title')}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <div className="flex items-center gap-1.5">
-            <span className="text-zinc-400">Сетов:</span>
+            <span className="text-zinc-400">{t('editor_gen_sets_label')}</span>
             <input
               type="number"
               min="1"
@@ -595,7 +590,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-zinc-400">Работа:</span>
+            <span className="text-zinc-400">{t('editor_gen_work_label')}</span>
             <input
               type="number"
               min="0"
@@ -607,15 +602,15 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
               }}
               className="w-16 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-center text-white font-mono"
             />
-            <span className="text-zinc-500 text-[11px]">сек</span>
+            <span className="text-zinc-500 text-[11px]">{t('unit_sec')}</span>
             {genWork > 0 ? (
               <button
                 type="button"
                 onClick={() => setGenWork(0)}
                 className="px-2 py-1 rounded bg-zinc-800 hover:bg-rose-950/40 text-[11px] text-zinc-400 hover:text-rose-300 border border-zinc-700 transition-colors"
-                title="Удалить работу (0с)"
+                title={t('editor_gen_no_work')}
               >
-                0с (без работы)
+                {t('editor_gen_no_work')}
               </button>
             ) : (
               <button
@@ -623,13 +618,13 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                 onClick={() => setGenWork(30)}
                 className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 text-[11px] transition-colors"
               >
-                + 30с
+                + 30{t('unit_sec')}
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-zinc-400">Отдых:</span>
+            <span className="text-zinc-400">{t('editor_gen_rest_label')}</span>
             <input
               type="number"
               min="0"
@@ -641,15 +636,15 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
               }}
               className="w-16 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-center text-white font-mono"
             />
-            <span className="text-zinc-500 text-[11px]">сек</span>
+            <span className="text-zinc-500 text-[11px]">{t('unit_sec')}</span>
             {genRest > 0 ? (
               <button
                 type="button"
                 onClick={() => setGenRest(0)}
                 className="px-2 py-1 rounded bg-zinc-800 hover:bg-rose-950/40 text-[11px] text-zinc-400 hover:text-rose-300 border border-zinc-700 transition-colors"
-                title="Удалить отдых (0с)"
+                title={t('editor_gen_no_rest')}
               >
-                0с (без отдыха)
+                {t('editor_gen_no_rest')}
               </button>
             ) : (
               <button
@@ -657,7 +652,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                 onClick={() => setGenRest(15)}
                 className="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 text-[11px] transition-colors"
               >
-                + 15с
+                + 15{t('unit_sec')}
               </button>
             )}
           </div>
@@ -666,7 +661,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
             onClick={handleGenerateBatch}
             className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs transition-colors"
           >
-            Сгенерировать
+            {t('editor_gen_btn')}
           </button>
         </div>
       </div>
@@ -677,7 +672,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
           <div className="flex items-center gap-2">
             <Sliders className="w-4 h-4 text-emerald-400" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-300">
-              Список сетов ({plan.sets.length})
+              {t('editor_sets_list_title')} ({plan.sets.length})
             </h3>
           </div>
 
@@ -687,36 +682,36 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
               type="button"
               onClick={handleRemoveAllWorkCounters}
               className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs transition-colors"
-              title="Удалить счетчик работы во всех сетах (останется только отдых)"
+              title={t('editor_remove_work_all')}
             >
-              Удалить работу во всех (0с)
+              {t('editor_remove_work_all')}
             </button>
 
             <button
               type="button"
               onClick={handleRemoveAllRestCounters}
               className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs transition-colors"
-              title="Удалить счетчик отдыха во всех сетах (непрерывная работа)"
+              title={t('editor_remove_rest_all')}
             >
-              Удалить отдых во всех (0с)
+              {t('editor_remove_rest_all')}
             </button>
 
             <button
               type="button"
               onClick={handleRestoreAllWorkCounters}
               className="px-2 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs transition-colors"
-              title="Вернуть работу (+30с) во все сеты"
+              title={t('editor_add_work_all')}
             >
-              +30с работы всем
+              {t('editor_add_work_all')}
             </button>
 
             <button
               type="button"
               onClick={handleRestoreAllRestCounters}
               className="px-2 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs transition-colors"
-              title="Вернуть отдых (+15с) во все сеты"
+              title={t('editor_add_rest_all')}
             >
-              +15с отдыха всем
+              {t('editor_add_rest_all')}
             </button>
 
             <button
@@ -725,7 +720,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-semibold hover:bg-emerald-500/30 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Добавить сет</span>
+              <span>{t('editor_add_set')}</span>
             </button>
           </div>
         </div>
@@ -755,7 +750,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                     value={set.name}
                     onChange={(e) => handleUpdateSet(idx, { name: e.target.value })}
                     className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-                    placeholder="Название упражнения"
+                    placeholder={t('editor_set_placeholder')}
                   />
                 </div>
 
@@ -765,7 +760,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                     onClick={() => handleMoveSet(idx, 'up')}
                     disabled={idx === 0}
                     className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-30 transition-colors"
-                    title="Переместить сет вверх"
+                    title={t('editor_move_up')}
                   >
                     <ArrowUp className="w-4 h-4" />
                   </button>
@@ -773,14 +768,14 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                     onClick={() => handleMoveSet(idx, 'down')}
                     disabled={idx === plan.sets.length - 1}
                     className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 disabled:opacity-30 transition-colors"
-                    title="Переместить сет вниз"
+                    title={t('editor_move_down')}
                   >
                     <ArrowDown className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDuplicateSet(idx)}
                     className="p-1.5 rounded-lg text-zinc-500 hover:text-cyan-400 transition-colors"
-                    title="Дублировать сет"
+                    title={t('editor_duplicate_set')}
                   >
                     <Copy className="w-4 h-4" />
                   </button>
@@ -788,7 +783,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                     onClick={() => handleDeleteSet(idx)}
                     disabled={plan.sets.length <= 1}
                     className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 disabled:opacity-30 transition-colors"
-                    title="Удалить весь этот сет"
+                    title={t('editor_delete_set')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -800,14 +795,14 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-amber-300 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                   <span>
-                    В сете удалены оба счетчика (0с работы и 0с отдыха). Добавьте работу или отдых, либо удалите этот сет.
+                    {t('editor_both_counters_empty')}
                   </span>
                 </div>
               )}
 
               {/* Row 2: Counter Controls with explicit Delete/Restore functionality */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-zinc-900">
-                {/* 1. СЧЕТЧИК РАБОТЫ */}
+                {/* 1. WORK COUNTER */}
                 <div className={`rounded-xl p-3 border transition-all ${
                   isWorkDeleted
                     ? 'bg-zinc-900/30 border-zinc-800/60'
@@ -817,7 +812,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                     <span className="flex items-center gap-1.5 text-xs font-semibold">
                       <span className={`w-2 h-2 rounded-full ${isWorkDeleted ? 'bg-zinc-600' : 'bg-emerald-400'}`} />
                       <span className={isWorkDeleted ? 'text-zinc-500 line-through' : 'text-emerald-400'}>
-                        Счетчик работы:
+                        {t('editor_work_counter_title')}
                       </span>
                     </span>
 
@@ -827,20 +822,20 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                         type="button"
                         onClick={() => handleUpdateSet(idx, { workSeconds: 30 })}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-xs font-medium transition-colors"
-                        title="Добавить счетчик работы (30 сек)"
+                        title={t('editor_add_counter')}
                       >
                         <PlusCircle className="w-3.5 h-3.5" />
-                        <span>Добавить работу (+30с)</span>
+                        <span>{t('editor_add_counter')} (+30{t('unit_sec')})</span>
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleUpdateSet(idx, { workSeconds: 0 })}
                         className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800/80 hover:bg-rose-950/40 text-zinc-400 hover:text-rose-300 border border-zinc-700/80 hover:border-rose-500/30 text-[11px] transition-colors"
-                        title="Удалить счетчик работы (установить в 0 сек)"
+                        title={t('editor_delete_counter')}
                       >
                         <X className="w-3 h-3 text-rose-400" />
-                        <span>Удалить счетчик (0с)</span>
+                        <span>{t('editor_delete_counter')}</span>
                       </button>
                     )}
                   </div>
@@ -860,7 +855,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                         }}
                         className="w-20 bg-zinc-950 border border-zinc-700 focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-center font-mono text-sm text-white font-bold focus:outline-none"
                       />
-                      <span className="text-xs text-zinc-400">сек</span>
+                      <span className="text-xs text-zinc-400">{t('unit_sec')}</span>
 
                       {/* Quick adjustment buttons */}
                       <div className="flex items-center gap-1 ml-auto">
@@ -872,9 +867,8 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                             })
                           }
                           className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-mono"
-                          title="Убавить 5 секунд"
                         >
-                          -5с
+                          -5{t('unit_sec')}
                         </button>
                         <button
                           type="button"
@@ -884,9 +878,8 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                             })
                           }
                           className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-mono"
-                          title="Прибавить 5 секунд"
                         >
-                          +5с
+                          +5{t('unit_sec')}
                         </button>
                         <button
                           type="button"
@@ -896,27 +889,26 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                             })
                           }
                           className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-mono"
-                          title="Прибавить 15 секунд"
                         >
-                          +15с
+                          +15{t('unit_sec')}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="text-xs text-zinc-500 italic py-1 flex items-center justify-between">
-                      <span>Счетчик удален: фаза работы пропущена (0с)</span>
+                      <span>{t('editor_work_counter_empty')}</span>
                       <button
                         type="button"
                         onClick={() => handleUpdateSet(idx, { workSeconds: 45 })}
                         className="text-[11px] text-zinc-400 hover:text-emerald-400 hover:underline"
                       >
-                        +45с
+                        +45{t('unit_sec')}
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* 2. СЧЕТЧИК ОТДЫХА */}
+                {/* 2. REST COUNTER */}
                 <div className={`rounded-xl p-3 border transition-all ${
                   isRestDeleted
                     ? 'bg-zinc-900/30 border-zinc-800/60'
@@ -926,7 +918,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                     <span className="flex items-center gap-1.5 text-xs font-semibold">
                       <span className={`w-2 h-2 rounded-full ${isRestDeleted ? 'bg-zinc-600' : 'bg-cyan-400'}`} />
                       <span className={isRestDeleted ? 'text-zinc-500 line-through' : 'text-cyan-400'}>
-                        Счетчик отдыха:
+                        {t('editor_rest_counter_title')}
                       </span>
                     </span>
 
@@ -936,20 +928,20 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                         type="button"
                         onClick={() => handleUpdateSet(idx, { restSeconds: 15 })}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 text-xs font-medium transition-colors"
-                        title="Добавить счетчик отдыха (15 сек)"
+                        title={t('editor_add_counter')}
                       >
                         <PlusCircle className="w-3.5 h-3.5" />
-                        <span>Добавить отдых (+15с)</span>
+                        <span>{t('editor_add_counter')} (+15{t('unit_sec')})</span>
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleUpdateSet(idx, { restSeconds: 0 })}
                         className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-800/80 hover:bg-rose-950/40 text-zinc-400 hover:text-rose-300 border border-zinc-700/80 hover:border-rose-500/30 text-[11px] transition-colors"
-                        title="Удалить счетчик отдыха (установить в 0 сек)"
+                        title={t('editor_delete_counter')}
                       >
                         <X className="w-3 h-3 text-rose-400" />
-                        <span>Удалить счетчик (0с)</span>
+                        <span>{t('editor_delete_counter')}</span>
                       </button>
                     )}
                   </div>
@@ -969,7 +961,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                         }}
                         className="w-20 bg-zinc-950 border border-zinc-700 focus:border-cyan-500 rounded-lg px-2.5 py-1.5 text-center font-mono text-sm text-white font-bold focus:outline-none"
                       />
-                      <span className="text-xs text-zinc-400">сек</span>
+                      <span className="text-xs text-zinc-400">{t('unit_sec')}</span>
 
                       {/* Quick adjustment buttons */}
                       <div className="flex items-center gap-1 ml-auto">
@@ -981,9 +973,8 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                             })
                           }
                           className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-mono"
-                          title="Убавить 5 секунд"
                         >
-                          -5с
+                          -5{t('unit_sec')}
                         </button>
                         <button
                           type="button"
@@ -993,9 +984,8 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                             })
                           }
                           className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-mono"
-                          title="Прибавить 5 секунд"
                         >
-                          +5с
+                          +5{t('unit_sec')}
                         </button>
                         <button
                           type="button"
@@ -1005,21 +995,20 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                             })
                           }
                           className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-xs font-mono"
-                          title="Прибавить 15 секунд"
                         >
-                          +15с
+                          +15{t('unit_sec')}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="text-xs text-zinc-500 italic py-1 flex items-center justify-between">
-                      <span>Счетчик удален: отдых пропущен (переход к след. сету)</span>
+                      <span>{t('editor_rest_counter_empty')}</span>
                       <button
                         type="button"
                         onClick={() => handleUpdateSet(idx, { restSeconds: 30 })}
                         className="text-[11px] text-zinc-400 hover:text-cyan-400 hover:underline"
                       >
-                        +30с
+                        +30{t('unit_sec')}
                       </button>
                     </div>
                   )}
@@ -1038,14 +1027,14 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
               <div className="flex items-center gap-2">
                 <FileCode2 className="w-5 h-5 text-emerald-400" />
                 <h3 className="font-bold text-white text-base">
-                  Экспорт плана в структуру C (.h)
+                  {t('editor_export_modal_title')}
                 </h3>
               </div>
               <button
                 onClick={() => setShowCModal(false)}
                 className="text-zinc-400 hover:text-white px-2 py-1 text-sm font-semibold"
               >
-                ✕ Закрыть
+                ✕ {t('editor_close')}
               </button>
             </div>
 
@@ -1055,7 +1044,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
 
             <div className="p-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-950">
               <p className="text-xs text-zinc-400">
-                Вставьте этот код в <code className="text-emerald-400">c_src/</code> для использования в C программе.
+                {t('editor_export_modal_hint')}
               </p>
               <button
                 onClick={() => copyToClipboard(exportPlanToCHeader(plan))}
@@ -1066,7 +1055,7 @@ export const WorkoutEditor: React.FC<WorkoutEditorProps> = ({
                 }`}
               >
                 {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedCode ? 'Скопировано!' : 'Копировать C код'}</span>
+                <span>{copiedCode ? t('c_code_copied') : t('c_code_copy')}</span>
               </button>
             </div>
           </div>

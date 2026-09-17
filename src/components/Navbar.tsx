@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { SoundConfig } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useI18n } from '../i18n/context';
 
 export type ActiveTab = 'timer' | 'editor' | 'terminal' | 'presets' | 'journal' | 'c_code';
 
@@ -31,6 +33,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   setSoundConfig,
   onNewWorkout,
 }) => {
+  const { t } = useI18n();
+
   const toggleMute = () => {
     setSoundConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
   };
@@ -44,36 +48,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const navItems = [
-    { id: 'timer' as ActiveTab, label: 'Таймер (GUI)', icon: PlayCircle },
-    { id: 'editor' as ActiveTab, label: 'Сложные циклы', icon: Settings2 },
-    { id: 'terminal' as ActiveTab, label: 'C Консоль (CLI)', icon: Terminal },
-    { id: 'presets' as ActiveTab, label: 'Шаблоны', icon: Bookmark },
-    { id: 'journal' as ActiveTab, label: 'Журнал сессий', icon: History },
-    { id: 'c_code' as ActiveTab, label: 'C Код & Android', icon: FileCode2 },
+    { id: 'timer' as ActiveTab, label: t('nav_timer'), icon: PlayCircle },
+    { id: 'editor' as ActiveTab, label: t('nav_editor'), icon: Settings2 },
+    { id: 'terminal' as ActiveTab, label: t('nav_terminal'), icon: Terminal },
+    { id: 'presets' as ActiveTab, label: t('nav_presets'), icon: Bookmark },
+    { id: 'journal' as ActiveTab, label: t('nav_journal'), icon: History },
+    { id: 'c_code' as ActiveTab, label: t('nav_c_code'), icon: FileCode2 },
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800 text-zinc-100">
+    <header className="sticky top-0 z-40 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 text-zinc-100 pt-4 pb-3.5 sm:pt-6 sm:pb-5 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between min-h-[52px] sm:min-h-[60px]">
           {/* Logo / Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center font-mono font-bold text-emerald-400 text-sm">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center font-mono font-bold text-emerald-400 text-sm shadow-sm shrink-0">
               C:T
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight text-white">
-                  C INTERVAL TIMER
-                </span>
-                <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-md bg-zinc-800 text-emerald-400 border border-zinc-700">
-                  Core Engine v2.0
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">
-                ANSI CLI + Web GUI + Android APK Bridge
-              </p>
-            </div>
+            <span className="font-bold text-base sm:text-lg tracking-tight text-white select-none whitespace-nowrap">
+              C INTERVAL TIMER
+            </span>
           </div>
 
           {/* Nav Items */}
@@ -99,17 +93,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Controls: New Workout & Audio & Fullscreen & PWA Install */}
+          {/* Controls: New Workout & Language & Audio & Fullscreen & PWA Install */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageSwitcher />
+
             {onNewWorkout && (
               <button
                 id="btn-navbar-new-workout"
                 onClick={onNewWorkout}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-zinc-200 hover:text-white text-xs font-semibold transition-all shadow-xs"
-                title="Создать новый сложный цикл / шаблон"
+                title={t('nav_new_cycle')}
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                <span>Новый цикл</span>
+                <span>{t('nav_new_cycle')}</span>
               </button>
             )}
 
@@ -118,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-quick-mute"
               onClick={toggleMute}
-              title={soundConfig.enabled ? 'Выключить звук (M)' : 'Включить звук (M)'}
+              title={soundConfig.enabled ? t('nav_sound_off') : t('nav_sound_on')}
               className={`p-2 rounded-lg border transition-colors ${
                 soundConfig.enabled
                   ? 'bg-zinc-900 border-zinc-700 text-emerald-400 hover:bg-zinc-800'
@@ -131,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-fullscreen-toggle"
               onClick={toggleFullscreen}
-              title="Полноэкранный режим"
+              title={t('nav_fullscreen')}
               className="p-2 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors hidden sm:inline-flex"
             >
               <Maximize2 className="w-4 h-4" />
@@ -147,10 +143,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 id="mobile-nav-new-workout"
                 onClick={onNewWorkout}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-xs whitespace-nowrap font-medium rounded-md bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800 border border-zinc-800 active:scale-95 transition-all shrink-0"
-                title="Создать новый сложный цикл / шаблон"
+                title={t('nav_new_cycle')}
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400 stroke-[2.5]" />
-                <span>Новый цикл</span>
+                <span>{t('nav_new_cycle')}</span>
               </button>
               <div className="h-4 w-px bg-zinc-800 shrink-0 mx-0.5" />
             </>

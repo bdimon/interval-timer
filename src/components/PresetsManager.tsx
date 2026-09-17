@@ -10,11 +10,12 @@ import {
   Clock, 
   Check, 
   Copy,
-  Plus,
-  Sparkles
+  Plus
 } from 'lucide-react';
 import { WorkoutPlan } from '../types';
 import { exportPlanToCHeader } from '../utils/cExportHelper';
+import { useI18n } from '../i18n/context';
+import { getLocalizedPresetMeta } from '../i18n/translations';
 
 interface PresetsManagerProps {
   presets: WorkoutPlan[];
@@ -35,6 +36,7 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
   onResetDefaults,
   onImportPresets,
 }) => {
+  const { t, language } = useI18n();
   const [activeExportPlan, setActiveExportPlan] = useState<WorkoutPlan | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -46,7 +48,7 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
     const total = plan.prepSeconds + (singleCycle * plan.cycles) + ((plan.cycles - 1) * plan.cycleRestSeconds);
     const m = Math.floor(total / 60);
     const s = total % 60;
-    return `${m}м ${s}с`;
+    return `${m}${t('unit_min')} ${s}${t('unit_sec')}`;
   };
 
   const handleExportAllJSON = () => {
@@ -83,14 +85,20 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleConfirmReset = () => {
+    if (window.confirm(t('presets_confirm_reset'))) {
+      onResetDefaults();
+    }
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-6">
       {/* Header with actions */}
       <div className="bg-zinc-950 rounded-2xl border border-zinc-800 p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white">Шаблоны тренировок</h2>
+          <h2 className="text-xl font-bold text-white">{t('presets_title')}</h2>
           <p className="text-sm text-zinc-400 mt-1">
-            Готовые и сохраненные программы тренировок с поддержкой экспорта в C и JSON.
+            {t('presets_subtitle')}
           </p>
         </div>
 
@@ -100,10 +108,10 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
             id="btn-create-new-preset"
             onClick={onCreateNewPreset}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
-            title="Создать новый шаблон с чистого листа в конструкторе"
+            title={t('presets_card_create_title')}
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Создать новый шаблон</span>
+            <span>{t('presets_card_create_title')}</span>
           </button>
 
           {/* Export JSON */}
@@ -112,13 +120,13 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold transition-colors"
           >
             <Upload className="w-4 h-4 text-emerald-400" />
-            <span>Экспорт JSON</span>
+            <span>{t('presets_export_json')}</span>
           </button>
 
           {/* Import JSON */}
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold transition-colors cursor-pointer">
             <Download className="w-4 h-4 text-cyan-400" />
-            <span>Импорт JSON</span>
+            <span>{t('presets_import_json')}</span>
             <input
               type="file"
               accept=".json"
@@ -129,12 +137,12 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
 
           {/* Reset to Defaults */}
           <button
-            onClick={onResetDefaults}
+            onClick={handleConfirmReset}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs font-semibold transition-colors"
-            title="Восстановить заводские шаблоны"
+            title={t('presets_reset_all')}
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Сброс</span>
+            <span>{t('presets_reset_all')}</span>
           </button>
         </div>
       </div>
@@ -150,114 +158,119 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
             <Plus className="w-6 h-6" />
           </div>
           <h3 className="font-bold text-base text-zinc-200 group-hover:text-white transition-colors">
-            Создать новый шаблон
+            {t('presets_card_create_title')}
           </h3>
           <p className="text-xs text-zinc-400 max-w-xs mt-1.5 leading-relaxed">
-            Сконструировать произвольную тренировку с нуля: сеты, интервалы работы и отдыха, циклы и C-экспорт.
+            {t('presets_card_create_desc')}
           </p>
           <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 group-hover:underline">
-            <span>Открыть в конструкторе</span>
-            <span>→</span>
+            <span>{t('presets_card_create_btn')}</span>
           </span>
         </div>
 
-        {presets.map((preset) => (
-          <div
-            key={preset.id}
-            className="bg-zinc-950 rounded-2xl border border-zinc-800 p-5 shadow-lg hover:border-zinc-700 transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h3 className="font-bold text-base text-white">{preset.name}</h3>
-                <span className="shrink-0 flex items-center gap-1 text-xs font-mono font-medium px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-emerald-400">
-                  <Clock className="w-3 h-3" />
-                  <span>{calculateTotalDuration(preset)}</span>
-                </span>
-              </div>
+        {presets.map((preset) => {
+          const localizedMeta = getLocalizedPresetMeta(preset.id, t);
+          const displayName = localizedMeta?.name || preset.name;
+          const displayDescription = localizedMeta?.description || preset.description;
 
-              {preset.description && (
-                <p className="text-xs text-zinc-400 mb-4 line-clamp-2 leading-relaxed">
-                  {preset.description}
-                </p>
-              )}
-
-              {/* Badges */}
-              <div className="flex flex-wrap gap-2 mb-4 text-xs">
-                <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300">
-                  Сетов: <strong className="text-white">{preset.sets.length}</strong>
-                </span>
-                <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300">
-                  Циклов: <strong className="text-white">{preset.cycles}</strong>
-                </span>
-                {preset.prepSeconds > 0 && (
-                  <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-amber-400">
-                    Подготовка: {preset.prepSeconds}с
+          return (
+            <div
+              key={preset.id}
+              className="bg-zinc-950 rounded-2xl border border-zinc-800 p-5 shadow-lg hover:border-zinc-700 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h3 className="font-bold text-base text-white">{displayName}</h3>
+                  <span className="shrink-0 flex items-center gap-1 text-xs font-mono font-medium px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-emerald-400">
+                    <Clock className="w-3 h-3" />
+                    <span>{calculateTotalDuration(preset)}</span>
                   </span>
+                </div>
+
+                {displayDescription && (
+                  <p className="text-xs text-zinc-400 mb-4 line-clamp-2 leading-relaxed">
+                    {displayDescription}
+                  </p>
                 )}
-              </div>
 
-              {/* Set Preview Pills */}
-              <div className="flex flex-wrap gap-1.5 mb-5 max-h-20 overflow-y-auto pr-1">
-                {preset.sets.map((s, idx) => (
-                  <span
-                    key={s.id || idx}
-                    className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 text-zinc-300"
-                  >
-                    {idx + 1}.{' '}
-                    {s.workSeconds > 0 ? (
-                      <span className="text-emerald-400">{s.workSeconds}с</span>
-                    ) : (
-                      <span className="text-zinc-500 line-through">0с</span>
-                    )}{' '}
-                    /{' '}
-                    {s.restSeconds > 0 ? (
-                      <span className="text-cyan-400">{s.restSeconds}с</span>
-                    ) : (
-                      <span className="text-zinc-500 line-through">0с</span>
-                    )}
+                {/* Badges */}
+                <div className="flex flex-wrap gap-2 mb-4 text-xs">
+                  <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300">
+                    {t('editor_total_sets')}: <strong className="text-white">{preset.sets.length}</strong>
                   </span>
-                ))}
-              </div>
-            </div>
+                  <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300">
+                    {t('editor_cycles')}: <strong className="text-white">{preset.cycles}</strong>
+                  </span>
+                  {preset.prepSeconds > 0 && (
+                    <span className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-amber-400">
+                      {t('editor_prep')}: {preset.prepSeconds}{t('unit_sec')}
+                    </span>
+                  )}
+                </div>
 
-            {/* Bottom Controls */}
-            <div className="pt-3 border-t border-zinc-900 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onEditPreset(preset)}
-                  className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs transition-colors"
-                  title="Редактировать в конструкторе"
-                >
-                  <Settings2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setActiveExportPlan(preset)}
-                  className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-cyan-400 text-xs transition-colors"
-                  title="Экспорт в C (.h)"
-                >
-                  <FileCode2 className="w-4 h-4" />
-                </button>
-                {preset.isCustom && (
+                {/* Set Preview Pills */}
+                <div className="flex flex-wrap gap-1.5 mb-5 max-h-20 overflow-y-auto pr-1">
+                  {preset.sets.map((s, idx) => (
+                    <span
+                      key={s.id || idx}
+                      className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-900/80 border border-zinc-800 text-zinc-300"
+                    >
+                      {idx + 1}.{' '}
+                      {s.workSeconds > 0 ? (
+                        <span className="text-emerald-400">{s.workSeconds}{t('unit_sec')}</span>
+                      ) : (
+                        <span className="text-zinc-500 line-through">0{t('unit_sec')}</span>
+                      )}{' '}
+                      /{' '}
+                      {s.restSeconds > 0 ? (
+                        <span className="text-cyan-400">{s.restSeconds}{t('unit_sec')}</span>
+                      ) : (
+                        <span className="text-zinc-500 line-through">0{t('unit_sec')}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Controls */}
+              <div className="pt-3 border-t border-zinc-900 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => onDeletePreset(preset.id)}
-                    className="p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/40 text-rose-400 text-xs transition-colors"
-                    title="Удалить шаблон"
+                    onClick={() => onEditPreset(preset)}
+                    className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs transition-colors"
+                    title={t('presets_edit_plan')}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Settings2 className="w-4 h-4" />
                   </button>
-                )}
-              </div>
+                  <button
+                    onClick={() => setActiveExportPlan(preset)}
+                    className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-cyan-400 text-xs transition-colors"
+                    title={t('presets_export_header')}
+                  >
+                    <FileCode2 className="w-4 h-4" />
+                  </button>
+                  {preset.isCustom && (
+                    <button
+                      onClick={() => onDeletePreset(preset.id)}
+                      className="p-2 rounded-xl bg-zinc-900 hover:bg-rose-950/40 text-rose-400 text-xs transition-colors"
+                      title={t('presets_delete_plan')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
 
-              <button
-                onClick={() => onSelectPreset(preset, true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Запустить</span>
-              </button>
+                <button
+                  onClick={() => onSelectPreset(preset, true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>{t('presets_start_workout')}</span>
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* C Code Export Modal */}
@@ -268,14 +281,14 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
               <div className="flex items-center gap-2">
                 <FileCode2 className="w-5 h-5 text-emerald-400" />
                 <h3 className="font-bold text-white text-base">
-                  C Заголовок: {activeExportPlan.name}
+                  {t('presets_modal_export_title')}: {getLocalizedPresetMeta(activeExportPlan.id, t)?.name || activeExportPlan.name}
                 </h3>
               </div>
               <button
                 onClick={() => setActiveExportPlan(null)}
                 className="text-zinc-400 hover:text-white px-2 py-1 text-sm font-semibold"
               >
-                ✕
+                ✕ {t('editor_close')}
               </button>
             </div>
 
@@ -285,7 +298,7 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
 
             <div className="p-4 border-t border-zinc-800 flex items-center justify-between bg-zinc-950">
               <span className="text-xs text-zinc-400">
-                Готово для включения в проект C
+                {t('editor_export_modal_hint')}
               </span>
               <button
                 onClick={() => copyCHeader(activeExportPlan)}
@@ -296,7 +309,7 @@ export const PresetsManager: React.FC<PresetsManagerProps> = ({
                 }`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Скопировано!' : 'Копировать C код'}</span>
+                <span>{copied ? t('presets_modal_copied') : t('presets_modal_export_copy')}</span>
               </button>
             </div>
           </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Flame, Coffee, CheckCircle2, PauseCircle, Timer as TimerIcon, BarChart2, CircleDot } from 'lucide-react';
 import { TimerPhase, WorkoutPlan } from '../types';
+import { useI18n } from '../i18n/context';
+import { getLocalizedPlanName, getLocalizedSetName } from '../utils/defaultPresets';
 
 interface TimerDisplayProps {
   phase: TimerPhase;
@@ -22,6 +24,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
   plan,
   totalElapsedSeconds,
 }) => {
+  const { t, language } = useI18n();
+
   // Allow toggling between linear (compact 1-screen) and circular modes, defaulting to 'linear'
   const [displayMode, setDisplayMode] = useState<'linear' | 'circular'>(() => {
     return (localStorage.getItem('timer_display_mode') as 'linear' | 'circular') || 'linear';
@@ -32,42 +36,52 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     localStorage.setItem('timer_display_mode', mode);
   };
 
-  const currentSet = plan.sets[currentSetIndex] || plan.sets[0];
+  const safeSets = Array.isArray(plan?.sets) && plan.sets.length > 0 
+    ? plan.sets 
+    : [{ id: 'default', name: `${t('timer_set')} 1`, workSeconds: 20, restSeconds: 10 }];
+  const currentSet = safeSets[currentSetIndex] || safeSets[0];
   const isCountingDown3s = secondsRemaining <= 3 && secondsRemaining >= 1 && phase !== 'PAUSED' && phase !== 'COMPLETED';
-  const isLastSetOfCycle = currentSetIndex === plan.sets.length - 1;
+  const isLastSetOfCycle = currentSetIndex === safeSets.length - 1;
+
+  const planDisplayName = getLocalizedPlanName(plan, language) || plan.name;
+  const currentSetName = getLocalizedSetName(plan, currentSetIndex, language) || currentSet.name;
 
   // Calculate upcoming next phase
   const getNextPhaseInfo = (): string => {
     if (phase === 'PREP') {
       if (currentSet.workSeconds > 0) {
-        return `Работа: ${currentSet.name} (${formatTime(currentSet.workSeconds)})`;
+        return `${t('phase_work')}: ${currentSetName} (${formatTime(currentSet.workSeconds)})`;
       }
-      return `Отдых: ${currentSet.name} (${formatTime(currentSet.restSeconds)})`;
+      return `${t('phase_rest')}: ${currentSetName} (${formatTime(currentSet.restSeconds)})`;
     }
     if (phase === 'WORK') {
       if (currentSet.restSeconds > 0) {
-        return `Отдых (${formatTime(currentSet.restSeconds)})`;
+        return `${t('phase_rest')} (${formatTime(currentSet.restSeconds)})`;
       }
       if (currentSetIndex + 1 < plan.sets.length) {
         const nextSet = plan.sets[currentSetIndex + 1];
-        return `Сет ${currentSetIndex + 2}: ${nextSet.name} (${formatTime(nextSet.workSeconds > 0 ? nextSet.workSeconds : nextSet.restSeconds)})`;
+        const nextSetName = getLocalizedSetName(plan, currentSetIndex + 1, language) || nextSet.name;
+        return `${t('timer_set')} ${currentSetIndex + 2}: ${nextSetName} (${formatTime(nextSet.workSeconds > 0 ? nextSet.workSeconds : nextSet.restSeconds)})`;
       }
       if (currentCycleIndex + 1 < plan.cycles) {
-        return `Цикл ${currentCycleIndex + 2}: ${plan.sets[0].name}`;
+        const firstSetName = getLocalizedSetName(plan, 0, language) || plan.sets[0].name;
+        return `${t('timer_cycle')} ${currentCycleIndex + 2}: ${firstSetName}`;
       }
-      return 'Завершение тренировки';
+      return t('phase_completed');
     }
     if (phase === 'REST' || phase === 'CYCLE_REST') {
       if (currentSetIndex + 1 < plan.sets.length) {
         const nextSet = plan.sets[currentSetIndex + 1];
-        return `Сет ${currentSetIndex + 2}: ${nextSet.name} (${formatTime(nextSet.workSeconds > 0 ? nextSet.workSeconds : nextSet.restSeconds)})`;
+        const nextSetName = getLocalizedSetName(plan, currentSetIndex + 1, language) || nextSet.name;
+        return `${t('timer_set')} ${currentSetIndex + 2}: ${nextSetName} (${formatTime(nextSet.workSeconds > 0 ? nextSet.workSeconds : nextSet.restSeconds)})`;
       }
       if (currentCycleIndex + 1 < plan.cycles) {
-        return `Цикл ${currentCycleIndex + 2}: ${plan.sets[0].name}`;
+        const firstSetName = getLocalizedSetName(plan, 0, language) || plan.sets[0].name;
+        return `${t('timer_cycle')} ${currentCycleIndex + 2}: ${firstSetName}`;
       }
-      return 'Завершение тренировки';
+      return t('phase_completed');
     }
-    return 'Ожидание запуска';
+    return t('phase_idle');
   };
 
   const formatTime = (totalSec: number): string => {
@@ -82,7 +96,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       case 'WORK':
         return {
           badgeBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-          title: 'РАБОТА / WORK',
+          title: t('phase_work'),
           icon: Flame,
           accentColor: 'text-emerald-400',
           cardBorder: 'border-emerald-500/30',
@@ -95,7 +109,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       case 'CYCLE_REST':
         return {
           badgeBg: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
-          title: phase === 'CYCLE_REST' ? 'ОТДЫХ МЕЖДУ ЦИКЛАМИ' : 'ОТДЫХ / REST',
+          title: phase === 'CYCLE_REST' ? t('phase_cycle_rest') : t('phase_rest'),
           icon: Coffee,
           accentColor: 'text-cyan-400',
           cardBorder: 'border-cyan-500/30',
@@ -107,7 +121,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       case 'PREP':
         return {
           badgeBg: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-          title: 'ПОДГОТОВКА / PREP',
+          title: t('phase_prep'),
           icon: Bell,
           accentColor: 'text-amber-400',
           cardBorder: 'border-amber-500/30',
@@ -119,7 +133,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       case 'PAUSED':
         return {
           badgeBg: 'bg-purple-500/20 text-purple-400 border-purple-500/40',
-          title: 'ПАУЗА / PAUSED',
+          title: t('phase_paused'),
           icon: PauseCircle,
           accentColor: 'text-purple-400',
           cardBorder: 'border-purple-500/30',
@@ -131,7 +145,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       case 'COMPLETED':
         return {
           badgeBg: 'bg-emerald-500/30 text-emerald-300 border-emerald-400',
-          title: 'ТРЕНИРОВКА ЗАВЕРШЕНА!',
+          title: t('phase_completed'),
           icon: CheckCircle2,
           accentColor: 'text-emerald-400',
           cardBorder: 'border-emerald-500/50',
@@ -143,7 +157,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       default:
         return {
           badgeBg: 'bg-zinc-800 text-zinc-300 border-zinc-700',
-          title: 'ГОТОВ К СТАРТУ',
+          title: t('phase_idle'),
           icon: TimerIcon,
           accentColor: 'text-zinc-400',
           cardBorder: 'border-zinc-800',
@@ -187,7 +201,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-300 backdrop-blur-md shadow-lg animate-pulse text-xs">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
               <span className="font-mono font-bold uppercase tracking-wider">
-                Метроном: {secondsRemaining}с
+                {t('timer_metronome_label')} {secondsRemaining}{t('unit_sec')}
               </span>
             </div>
           </motion.div>
@@ -197,9 +211,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       {/* Top Header: Current Preset, Cycle & Set Pills + View Mode Toggle */}
       <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2 sm:mb-3 z-10 text-xs">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-medium text-zinc-400 hidden xs:inline">План:</span>
           <span className="font-semibold text-white px-2 py-0.5 rounded-md bg-zinc-900/90 border border-zinc-700 truncate max-w-[150px] sm:max-w-[220px]">
-            {plan.name}
+            {planDisplayName}
           </span>
         </div>
 
@@ -207,14 +220,14 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           {isLastSetOfCycle && plan.sets.length > 1 && (
             <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono text-[11px] font-semibold flex items-center gap-1 animate-pulse shadow-sm">
               <Flame className="w-3 h-3 text-amber-400" />
-              <span>Финал!</span>
+              <span>{t('badge_final_round')}</span>
             </span>
           )}
           <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-xs">
-            Сет <strong className="text-white">{currentSetIndex + 1}</strong>/{plan.sets.length}
+            {t('timer_set')} <strong className="text-white">{currentSetIndex + 1}</strong>/{plan.sets.length}
           </span>
           <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 font-mono text-xs">
-            Цикл <strong className="text-white">{currentCycleIndex + 1}</strong>/{plan.cycles}
+            {t('timer_cycle')} <strong className="text-white">{currentCycleIndex + 1}</strong>/{plan.cycles}
           </span>
 
           {/* View mode toggle button (Linear vs Circular) */}
@@ -226,7 +239,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
               className={`p-1 rounded-md transition-colors ${
                 isLinear ? 'bg-zinc-700 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
               }`}
-              title="Линейный компактный режим (на 1 экран)"
+              title={t('timer_mode_digital')}
             >
               <BarChart2 className="w-3.5 h-3.5 rotate-90" />
             </button>
@@ -237,7 +250,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
               className={`p-1 rounded-md transition-colors ${
                 !isLinear ? 'bg-zinc-700 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-200'
               }`}
-              title="Круговой классический режим"
+              title={t('timer_mode_radial')}
             >
               <CircleDot className="w-3.5 h-3.5" />
             </button>
@@ -257,7 +270,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
           </span>
           {currentSet.workSeconds === 0 && phase === 'REST' && (
             <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 text-[11px] font-medium">
-              Без работы (0с)
+              {t('timer_no_work')}
             </span>
           )}
         </div>
@@ -265,16 +278,16 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
         {/* Set / Exercise Name */}
         <h3 className="text-sm sm:text-base font-semibold text-zinc-200 truncate max-w-[240px] sm:max-w-xs text-right">
           {phase === 'WORK'
-            ? currentSet.name
+            ? currentSetName
             : phase === 'REST'
             ? currentSet.workSeconds === 0
-              ? `${currentSet.name} (Отдых)`
-              : `Передышка`
+              ? `${currentSetName} ${t('timer_rest_set_suffix')}`
+              : t('timer_rest_short')
             : phase === 'CYCLE_REST'
-            ? `Отдых перед циклом ${currentCycleIndex + 2}`
+            ? `${t('timer_rest_cycle_prefix')} ${currentCycleIndex + 2}`
             : phase === 'PREP'
-            ? 'Приготовьтесь'
-            : plan.name}
+            ? t('phase_prep_get_ready')
+            : planDisplayName}
         </h3>
       </div>
 
@@ -292,7 +305,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
               {formatTime(secondsRemaining)}
             </span>
             <span className="text-xs sm:text-sm font-medium text-zinc-400">
-              {phase === 'PAUSED' ? 'ПАУЗА' : `/ ${formatTime(totalPhaseSeconds)}`}
+              {phase === 'PAUSED' ? t('phase_paused') : `/ ${formatTime(totalPhaseSeconds)}`}
             </span>
           </div>
 
@@ -307,9 +320,9 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
             {/* Sub-bar time indicators */}
             <div className="w-full flex items-center justify-between text-[11px] font-mono text-zinc-400 mt-1 px-1">
-              <span>Прошло: {formatTime(elapsedInPhase)}</span>
+              <span>{t('timer_elapsed')}: {formatTime(elapsedInPhase)}</span>
               <span className="font-semibold text-zinc-300">{progressPercent}%</span>
-              <span>Осталось: {formatTime(secondsRemaining)}</span>
+              <span>{t('timer_remaining')}: {formatTime(secondsRemaining)}</span>
             </div>
           </div>
         </div>
@@ -350,7 +363,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
             </span>
 
             <span className="text-[11px] sm:text-xs font-medium text-zinc-400 mt-0.5">
-              {phase === 'PAUSED' ? 'ТАЙМЕР НА ПАУЗЕ' : `Осталось в фазе`}
+              {phase === 'PAUSED' ? t('phase_paused') : t('timer_remaining')}
             </span>
           </div>
         </div>
@@ -359,12 +372,12 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
       {/* Bottom Info: Next Phase Preview & Elapsed Total */}
       <div className="w-full mt-2 sm:mt-3 pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400 z-10">
         <div className="flex items-center gap-1.5 text-left truncate max-w-[70%]">
-          <span className="text-zinc-500 shrink-0">Далее:</span>
+          <span className="text-zinc-500 shrink-0">{t('timer_next')}:</span>
           <span className="text-zinc-300 font-medium truncate">{getNextPhaseInfo()}</span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-zinc-500">Общее:</span>
+          <span className="text-zinc-500">{t('timer_elapsed')}:</span>
           <span className="font-mono text-emerald-400 font-semibold">
             {formatTime(totalElapsedSeconds)}
           </span>
@@ -373,4 +386,3 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     </div>
   );
 };
-

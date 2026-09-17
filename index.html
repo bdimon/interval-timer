@@ -28,18 +28,29 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Register Service Worker for standalone offline support
+      // Safely handle Service Worker: in Cloud preview / development environments, unregister to avoid redirect conflicts
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker
-            .register('/sw.js')
-            .then((registration) => {
-              console.log('PWA ServiceWorker registered with scope:', registration.scope);
-            })
-            .catch((err) => {
-              console.log('PWA ServiceWorker registration failed:', err);
-            });
-        });
+        const isCloudDev = window.location.hostname.includes('run.app') || 
+                           window.location.hostname === 'localhost' || 
+                           window.location.port === '3000';
+        if (isCloudDev) {
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (const registration of registrations) {
+              registration.unregister();
+            }
+          }).catch(() => {});
+        } else {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker
+              .register('/sw.js')
+              .then((registration) => {
+                console.log('PWA ServiceWorker registered with scope:', registration.scope);
+              })
+              .catch((err) => {
+                console.log('PWA ServiceWorker registration failed:', err);
+              });
+          });
+        }
       }
     </script>
   </body>

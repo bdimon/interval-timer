@@ -10,6 +10,7 @@ import {
   Calendar 
 } from 'lucide-react';
 import { SessionRecord } from '../types';
+import { useI18n } from '../i18n/context';
 
 interface HistoryJournalProps {
   records: SessionRecord[];
@@ -20,6 +21,7 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
   records,
   onClearHistory,
 }) => {
+  const { t, language } = useI18n();
   const totalWorkouts = records.length;
   const totalSeconds = records.reduce((acc, r) => acc + r.totalDurationSeconds, 0);
   const totalSets = records.reduce((acc, r) => acc + r.setsCompleted, 0);
@@ -28,17 +30,27 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
   const formatHoursMins = (secs: number) => {
     const hrs = Math.floor(secs / 3600);
     const mins = Math.floor((secs % 3600) / 60);
-    if (hrs > 0) return `${hrs} ч ${mins} мин`;
-    return `${mins} мин ${secs % 60} сек`;
+    const hrUnit = language === 'en' ? 'h' : language === 'uk' ? 'год' : 'ч';
+    if (hrs > 0) return `${hrs} ${hrUnit} ${mins} ${t('unit_min')}`;
+    return `${mins} ${t('unit_min')} ${secs % 60} ${t('unit_sec')}`;
   };
 
   const handleExportCSV = () => {
     if (records.length === 0) return;
-    let csv = 'ID,Дата и Время,План тренировки,Длительность (сек),Длительность (ММ:СС),Сетов пройдено,Всего сетов,Циклов пройдено,Всего циклов,Статус\n';
+    const isEn = language === 'en';
+    const isUk = language === 'uk';
+    const header = isEn
+      ? 'ID,Date & Time,Workout Plan,Duration (sec),Duration (MM:SS),Sets Done,Total Sets,Cycles Done,Total Cycles,Status\n'
+      : isUk
+      ? 'ID,Дата та Час,План тренування,Тривалість (сек),Тривалість (ММ:СС),Сетів пройдено,Всього сетів,Циклів пройдено,Всього циклів,Статус\n'
+      : 'ID,Дата и Время,План тренировки,Длительность (сек),Длительность (ММ:СС),Сетов пройдено,Всего сетов,Циклов пройдено,Всего циклов,Статус\n';
+    
+    let csv = header;
     records.forEach((r) => {
       const m = Math.floor(r.totalDurationSeconds / 60);
       const s = r.totalDurationSeconds % 60;
-      csv += `"${r.id}","${r.timestamp}","${r.planName.replace(/"/g, '""')}",${r.totalDurationSeconds},"${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}",${r.setsCompleted},${r.totalSets},${r.cyclesCompleted},${r.totalCycles},"${r.completedFully ? 'Завершена' : 'Остановлена'}"\n`;
+      const statusStr = r.completedFully ? t('journal_status_completed') : t('journal_status_stopped');
+      csv += `"${r.id}","${r.timestamp}","${r.planName.replace(/"/g, '""')}",${r.totalDurationSeconds},"${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}",${r.setsCompleted},${r.totalSets},${r.cyclesCompleted},${r.totalCycles},"${statusStr}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -55,9 +67,9 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
       {/* Header */}
       <div className="bg-zinc-950 rounded-2xl border border-zinc-800 p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white">Журнал завершенных сессий</h2>
+          <h2 className="text-xl font-bold text-white">{t('journal_title')}</h2>
           <p className="text-sm text-zinc-400 mt-1">
-            История выполненных интервальных тренировок и статистика активности.
+            {t('journal_subtitle')}
           </p>
         </div>
 
@@ -69,14 +81,14 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 text-xs font-semibold transition-colors"
               >
                 <Download className="w-4 h-4 text-emerald-400" />
-                <span>Экспорт в CSV</span>
+                <span>{t('journal_export_csv')}</span>
               </button>
               <button
                 onClick={onClearHistory}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-rose-400 hover:text-rose-300 hover:bg-zinc-800 text-xs font-semibold transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Очистить</span>
+                <span>{t('journal_clear_all')}</span>
               </button>
             </>
           )}
@@ -91,7 +103,7 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
           </div>
           <div>
             <div className="text-xl font-bold text-white font-mono">{totalWorkouts}</div>
-            <div className="text-xs text-zinc-400">Всего тренировок</div>
+            <div className="text-xs text-zinc-400">{t('journal_stat_workouts')}</div>
           </div>
         </div>
 
@@ -101,7 +113,7 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
           </div>
           <div>
             <div className="text-xl font-bold text-white font-mono">{formatHoursMins(totalSeconds)}</div>
-            <div className="text-xs text-zinc-400">Время под нагрузкой</div>
+            <div className="text-xs text-zinc-400">{t('journal_stat_time')}</div>
           </div>
         </div>
 
@@ -111,7 +123,7 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
           </div>
           <div>
             <div className="text-xl font-bold text-white font-mono">{totalSets}</div>
-            <div className="text-xs text-zinc-400">Выполнено сетов</div>
+            <div className="text-xs text-zinc-400">{t('journal_stat_sets')}</div>
           </div>
         </div>
 
@@ -123,7 +135,7 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
             <div className="text-xl font-bold text-white font-mono">
               {totalWorkouts > 0 ? `${Math.round((fullyCompleted / totalWorkouts) * 100)}%` : '0%'}
             </div>
-            <div className="text-xs text-zinc-400">Завершено на 100%</div>
+            <div className="text-xs text-zinc-400">{t('journal_stat_completed')}</div>
           </div>
         </div>
       </div>
@@ -133,9 +145,9 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
         {records.length === 0 ? (
           <div className="p-12 text-center text-zinc-500 flex flex-col items-center gap-2">
             <Calendar className="w-8 h-8 text-zinc-600" />
-            <p className="text-sm font-medium">Журнал тренировок пока пуст.</p>
+            <p className="text-sm font-medium">{t('journal_empty_title')}</p>
             <p className="text-xs text-zinc-600">
-              Завершите хотя бы одну тренировку на таймере или в консоли, и запись автоматически появится здесь.
+              {t('journal_empty_desc')}
             </p>
           </div>
         ) : (
@@ -143,12 +155,12 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
             <table className="w-full text-left text-xs text-zinc-300">
               <thead className="bg-zinc-900/90 text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-800">
                 <tr>
-                  <th className="py-3 px-4">Дата и время</th>
-                  <th className="py-3 px-4">План тренировки</th>
-                  <th className="py-3 px-4">Длительность</th>
-                  <th className="py-3 px-4">Сетов</th>
-                  <th className="py-3 px-4">Циклов</th>
-                  <th className="py-3 px-4">Статус</th>
+                  <th className="py-3 px-4">{t('journal_table_date')}</th>
+                  <th className="py-3 px-4">{t('journal_table_plan')}</th>
+                  <th className="py-3 px-4">{t('journal_table_duration')}</th>
+                  <th className="py-3 px-4">{t('journal_table_sets')}</th>
+                  <th className="py-3 px-4">{t('journal_table_cycles')}</th>
+                  <th className="py-3 px-4">{t('journal_table_status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-900">
@@ -178,12 +190,12 @@ export const HistoryJournal: React.FC<HistoryJournalProps> = ({
                         {rec.completedFully ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-medium">
                             <CheckCircle2 className="w-3 h-3" />
-                            <span>Завершена</span>
+                            <span>{t('journal_status_completed')}</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[11px] font-medium">
                             <AlertCircle className="w-3 h-3" />
-                            <span>Остановлена</span>
+                            <span>{t('journal_status_stopped')}</span>
                           </span>
                         )}
                       </td>

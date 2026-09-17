@@ -6,12 +6,13 @@ import {
   Check, 
   Terminal, 
   Smartphone, 
-  Globe, 
-  Layers 
+  Globe
 } from 'lucide-react';
 import { C_SOURCE_FILES } from '../c_code/cSourceFiles';
+import { useI18n } from '../i18n/context';
 
 export const CCodeViewer: React.FC = () => {
+  const { t, language } = useI18n();
   const [activeFileIndex, setActiveFileIndex] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -35,6 +36,60 @@ export const CCodeViewer: React.FC = () => {
 
   const lineCount = activeFile.content.split('\n').length;
 
+  const getFileLocalizedMeta = (filename: string) => {
+    switch (filename) {
+      case 'interval_timer.h':
+        return {
+          name: language === 'en' ? 'Core Header File' : language === 'uk' ? 'Заголовний файл ядра' : 'Заголовочный файл ядра',
+          desc: language === 'en'
+            ? 'Data structures (WorkoutPlan, IntervalSet, TimerState), phase enums, and API function prototypes.'
+            : language === 'uk'
+            ? 'Структури даних (WorkoutPlan, IntervalSet, TimerState), перерахування фаз та прототипи API функцій.'
+            : 'Структуры данных (WorkoutPlan, IntervalSet, TimerState), перечисления фаз и прототипы API функций.',
+        };
+      case 'interval_timer.c':
+        return {
+          name: language === 'en' ? 'Timer Core Implementation' : language === 'uk' ? 'Реалізація ядра таймера' : 'Реализация ядра таймера',
+          desc: language === 'en'
+            ? 'Phase switching logic, countdown loop, callbacks, sound signals, metronome, and storage.'
+            : language === 'uk'
+            ? 'Логіка зміни фаз, зворотного відліку, зворотних викликів, звукових сигналів, метронома та сховища.'
+            : 'Логика смены фаз, отсчета времени, обратных вызовов, звуковых сигналов, метронома и файлового хранилища.',
+        };
+      case 'main.c':
+        return {
+          name: language === 'en' ? 'Main CLI Console Program' : language === 'uk' ? 'Головна програма (Консоль CLI)' : 'Главная программа (Консоль CLI)',
+          desc: language === 'en'
+            ? 'ANSI HUD terminal interface with non-blocking key control, metronome, and live log.'
+            : language === 'uk'
+            ? 'ANSI HUD інтерфейс у терміналі з неблокуючим керуванням [P]ауза, [R]есет, [S]кіп, метрономом та журналом.'
+            : 'ANSI HUD интерфейс в терминале с неблокирующим управлением [P]ауза, [R]есет, [S]кип, метрономом и журналом.',
+        };
+      case 'android_jni.c':
+        return {
+          name: language === 'en' ? 'Android NDK / JNI Bridge' : language === 'uk' ? 'Android NDK / JNI Міст' : 'Android NDK / JNI Мост',
+          desc: language === 'en'
+            ? 'Binding code from C-core to Android Java/Kotlin via JNI for APK builds.'
+            : language === 'uk'
+            ? 'Код прив’язки C-ядра до Android Java/Kotlin через Java Native Interface (JNI) для APK збірки.'
+            : 'Код привязки C-ядра к Android Java/Kotlin через Java Native Interface (JNI) для APK сборки.',
+        };
+      case 'Makefile':
+        return {
+          name: language === 'en' ? 'Build Makefile' : language === 'uk' ? 'Makefile збирача' : 'Makefile сборщика',
+          desc: language === 'en'
+            ? 'Compilation instructions for GCC, Clang, MinGW, and WebAssembly (emcc).'
+            : language === 'uk'
+            ? 'Інструкції компіляції для GCC, Clang, MinGW, а також ціль для WebAssembly (emcc).'
+            : 'Инструкции компиляции для GCC, Clang, MinGW, а также цель для WebAssembly (emcc).',
+        };
+      default:
+        return { name: activeFile.name, desc: activeFile.description };
+    }
+  };
+
+  const fileMeta = getFileLocalizedMeta(activeFile.filename);
+
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col gap-6">
       {/* Platform Porting Architectural Guide Cards */}
@@ -43,10 +98,10 @@ export const CCodeViewer: React.FC = () => {
         <div className="bg-zinc-950 rounded-2xl border border-zinc-800 p-5 shadow-lg flex flex-col gap-2">
           <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
             <Terminal className="w-4 h-4" />
-            <span>1. CLI & GUI (C99 Standard)</span>
+            <span>{t('c_guide_cli_title')}</span>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Чистый C с разделением ядра и UI. Компилируется в консольное приложение через GCC/Clang или подключается к Raylib / ImGui / GTK.
+            {t('c_guide_cli_desc')}
           </p>
           <code className="text-[11px] font-mono bg-zinc-900 px-2 py-1.5 rounded text-zinc-300 mt-auto border border-zinc-800">
             gcc -O2 main.c interval_timer.c -o timer
@@ -57,13 +112,13 @@ export const CCodeViewer: React.FC = () => {
         <div className="bg-zinc-950 rounded-2xl border border-zinc-800 p-5 shadow-lg flex flex-col gap-2">
           <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm">
             <Smartphone className="w-4 h-4" />
-            <span>2. Android APK (NDK + JNI)</span>
+            <span>{t('c_guide_apk_title')}</span>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Ядро компилируется в нативную библиотеку <code className="text-cyan-300">.so</code> через Android NDK и работает внутри фонового Android Service без пауз.
+            {t('c_guide_apk_desc')}
           </p>
           <code className="text-[11px] font-mono bg-zinc-900 px-2 py-1.5 rounded text-zinc-300 mt-auto border border-zinc-800">
-            CMake + JNI мост (android_jni.c)
+            CMake + JNI Bridge (android_jni.c)
           </code>
         </div>
 
@@ -71,10 +126,10 @@ export const CCodeViewer: React.FC = () => {
         <div className="bg-zinc-950 rounded-2xl border border-zinc-800 p-5 shadow-lg flex flex-col gap-2">
           <div className="flex items-center gap-2 text-purple-400 font-bold text-sm">
             <Globe className="w-4 h-4" />
-            <span>3. Web & WebAssembly</span>
+            <span>{t('c_guide_wasm_title')}</span>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Компиляция исходного C кода напрямую в бинарный Wasm модуль с помощью Emscripten (<code className="text-purple-300">emcc</code>) для веб-браузеров.
+            {t('c_guide_wasm_desc')}
           </p>
           <code className="text-[11px] font-mono bg-zinc-900 px-2 py-1.5 rounded text-zinc-300 mt-auto border border-zinc-800">
             emcc interval_timer.c -s WASM=1
@@ -116,7 +171,7 @@ export const CCodeViewer: React.FC = () => {
               }`}
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Скопировано!' : 'Копировать'}</span>
+              <span>{copied ? t('c_view_copied') : t('c_view_copy')}</span>
             </button>
 
             <button
@@ -124,7 +179,7 @@ export const CCodeViewer: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-colors"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Скачать {activeFile.filename}</span>
+              <span>{t('c_view_download')} ({activeFile.filename})</span>
             </button>
           </div>
         </div>
@@ -132,12 +187,12 @@ export const CCodeViewer: React.FC = () => {
         {/* File Description Header */}
         <div className="bg-zinc-950 px-5 py-3 border-b border-zinc-900 flex flex-wrap items-center justify-between text-xs text-zinc-400">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-white">{activeFile.name}</span>
+            <span className="font-semibold text-white">{fileMeta.name}</span>
             <span>—</span>
-            <span>{activeFile.description}</span>
+            <span>{fileMeta.desc}</span>
           </div>
           <div className="font-mono text-zinc-500">
-            {lineCount} строк • {activeFile.language.toUpperCase()}
+            {lineCount} {t('c_view_lines')} • {activeFile.language.toUpperCase()}
           </div>
         </div>
 

@@ -14,42 +14,128 @@ import {
   SessionRecord, 
   SoundConfig 
 } from './types';
-import { DEFAULT_WORKOUT_PRESETS } from './utils/defaultPresets';
+import { 
+  DEFAULT_WORKOUT_PRESETS, 
+  getDefaultPresets, 
+  localizeWorkoutPlan, 
+  getLocalizedPlanName 
+} from './utils/defaultPresets';
 import { soundEngine } from './utils/audioEngine';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { useI18n, detectDefaultLanguage } from './i18n/context';
 
 const STORAGE_PRESETS_KEY = 'c_interval_timer_presets_v1';
 const STORAGE_HISTORY_KEY = 'c_interval_timer_history_v1';
 const STORAGE_DRAFT_PLAN_KEY = 'c_interval_timer_editor_draft_v2';
 const STORAGE_EDITING_PRESET_ID_KEY = 'c_interval_timer_editing_id_v2';
 
+function isValidWorkoutPlan(p: unknown): p is WorkoutPlan {
+  if (!p || typeof p !== 'object') return false;
+  const candidate = p as WorkoutPlan;
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.name === 'string' &&
+    Array.isArray(candidate.sets) &&
+    candidate.sets.length > 0 &&
+    candidate.sets.every(
+      (s) =>
+        s &&
+        typeof s === 'object' &&
+        typeof s.name === 'string' &&
+        typeof s.workSeconds === 'number' &&
+        typeof s.restSeconds === 'number'
+    )
+  );
+}
+
 export default function App() {
+  const { t, language } = useI18n();
   const [activeTab, setActiveTab] = useState<ActiveTab>('timer');
 
-  // Workout Presets State
+  // Workout Presets State with strict validation and language synchronization
   const [presets, setPresets] = useState<WorkoutPlan[]>(() => {
+    const initLang = detectDefaultLanguage();
+    const defaults = getDefaultPresets(initLang);
     try {
       const saved = localStorage.getItem(STORAGE_PRESETS_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter(isValidWorkoutPlan);
+          if (valid.length > 0) {
+            // Synchronize built-in presets with detected language
+            return valid.map((p) => {
+              if (p.isCustom && p.id !== 'tabata-classic') return p;
+              const matching = defaults.find((d) => d.id === p.id);
+              if (!matching) return p;
+              return {
+                ...p,
+                name: matching.name,
+                description: matching.description,
+                sets: p.sets.map((s, idx) => ({
+                  ...s,
+                  name: matching.sets[idx]?.name ?? s.name,
+                })),
+              };
+            });
+          }
+        }
+      }
     } catch {
       // fallback
     }
-    return DEFAULT_WORKOUT_PRESETS;
+    return defaults;
   });
 
-  // Current Workout Plan
-  const [currentPlan, setCurrentPlan] = useState<WorkoutPlan>(presets[0]);
+  // Current Workout Plan with safety guard
+  const [currentPlan, setCurrentPlan] = useState<WorkoutPlan>(() => {
+    const initLang = detectDefaultLanguage();
+    const defaults = getDefaultPresets(initLang);
+    return presets[0] || defaults[0];
+  });
 
-  // Persistent Editor Draft State (preserved across tab changes and reloads)
+  // Persistent Editor Draft State with safety guard
   const [editorPlan, setEditorPlan] = useState<WorkoutPlan>(() => {
+    const initLang = detectDefaultLanguage();
+    const defaults = getDefaultPresets(initLang);
     try {
       const savedDraft = localStorage.getItem(STORAGE_DRAFT_PLAN_KEY);
-      if (savedDraft) return JSON.parse(savedDraft);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (isValidWorkoutPlan(parsed)) {
+          if (parsed.isCustom && parsed.id !== 'tabata-classic') return parsed;
+          return localizeWorkoutPlan(parsed, initLang);
+        }
+      }
     } catch {
       // fallback
     }
-    return presets[0];
+    return presets[0] || defaults[0];
   });
+
+  // Synchronize built-in presets, currentPlan, and editorPlan whenever language changes
+  useEffect(() => {
+    const defaults = getDefaultPresets(language);
+    setPresets((prev) =>
+      prev.map((p) => {
+        if (p.isCustom && p.id !== 'tabata-classic') return p;
+        const matching = defaults.find((d) => d.id === p.id);
+        if (!matching) return p;
+        return {
+          ...p,
+          name: matching.name,
+          description: matching.description,
+          sets: p.sets.map((s, idx) => ({
+            ...s,
+            name: matching.sets[idx]?.name ?? s.name,
+          })),
+        };
+      })
+    );
+
+    setCurrentPlan((prev) => (prev.isCustom && prev.id !== 'tabata-classic' ? prev : localizeWorkoutPlan(prev, language)));
+    setEditorPlan((prev) => (prev.isCustom && prev.id !== 'tabata-classic' ? prev : localizeWorkoutPlan(prev, language)));
+  }, [language]);
 
   // ID of the preset currently being edited (if editing an existing template)
   const [editingPresetId, setEditingPresetId] = useState<string | null>(() => {
@@ -141,13 +227,15 @@ export default function App() {
     setCurrentCycleIndex(0);
     setTotalElapsedSeconds(0);
 
-    if (currentPlan.prepSeconds > 0) {
+    const safePlan = isValidWorkoutPlan(currentPlan) ? currentPlan : DEFAULT_WORKOUT_PRESETS[0];
+
+    if (safePlan.prepSeconds > 0) {
       setPhase('PREP');
       setPreviousPhase('PREP');
-      setSecondsRemaining(currentPlan.prepSeconds);
-      setTotalPhaseSeconds(currentPlan.prepSeconds);
-    } else if (currentPlan.sets.length > 0) {
-      const firstSet = currentPlan.sets[0];
+      setSecondsRemaining(safePlan.prepSeconds);
+      setTotalPhaseSeconds(safePlan.prepSeconds);
+    } else if (safePlan.sets.length > 0) {
+      const firstSet = safePlan.sets[0];
       if (firstSet.workSeconds > 0) {
         setPhase('WORK');
         setPreviousPhase('WORK');
@@ -165,7 +253,7 @@ export default function App() {
       setSecondsRemaining(0);
       setTotalPhaseSeconds(0);
     }
-    addTerminalLog(`Timer reset to start of plan "${currentPlan.name}".`);
+    addTerminalLog(`Timer reset to start of plan "${safePlan.name}".`);
   }, [currentPlan, addTerminalLog]);
 
   // Initialize timer on plan change
@@ -217,7 +305,7 @@ export default function App() {
         }
         addTerminalLog(
           isLastSet
-            ? `🔥 Phase: PREP -> WORK | [ФИНАЛЬНЫЙ СЕТ] Сет 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.workSeconds}s) - Последний сет раунда!`
+            ? `🔥 Phase: PREP -> WORK | [FINAL SET] Set 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.workSeconds}s)`
             : `Phase: PREP -> WORK | Set 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.workSeconds}s)`
         );
       } else if (firstSet.restSeconds > 0) {
@@ -233,8 +321,8 @@ export default function App() {
         }
         addTerminalLog(
           isLastSet
-            ? `🔥 Phase: PREP -> REST (Работа 0с) | [ФИНАЛЬНЫЙ СЕТ] Сет 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.restSeconds}s)`
-            : `Phase: PREP -> REST (Работа 0с) | Set 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.restSeconds}s)`
+            ? `🔥 Phase: PREP -> REST (Work 0s) | [FINAL SET] Set 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.restSeconds}s)`
+            : `Phase: PREP -> REST (Work 0s) | Set 1/${currentPlan.sets.length}: "${firstSet.name}" (${firstSet.restSeconds}s)`
         );
       } else {
         advanceToNextSet();
@@ -282,7 +370,7 @@ export default function App() {
         }
         addTerminalLog(
           isLastSet
-            ? `🔥 Cycle Break finished. Starting Cycle ${currentCycleIndex + 1}, [ФИНАЛЬНЫЙ СЕТ] Сет 1: "${firstSet.name}"`
+            ? `🔥 Cycle Break finished. Starting Cycle ${currentCycleIndex + 1}, [FINAL SET] Set 1: "${firstSet.name}"`
             : `Cycle Break finished. Starting Cycle ${currentCycleIndex + 1}, Set 1: "${firstSet.name}"`
         );
       } else if (firstSet.restSeconds > 0) {
@@ -296,7 +384,7 @@ export default function App() {
             soundEngine.playRestSignal(soundConfig.theme);
           }
         }
-        addTerminalLog(`Cycle Break finished. Starting Cycle ${currentCycleIndex + 1}, Set 1 (Работа 0с, Отдых ${firstSet.restSeconds}s)`);
+        addTerminalLog(`Cycle Break finished. Starting Cycle ${currentCycleIndex + 1}, Set 1 (Work 0s, Rest ${firstSet.restSeconds}s)`);
       } else {
         advanceToNextSet();
       }
@@ -376,7 +464,7 @@ export default function App() {
         }
         addTerminalLog(
           isLastSet
-            ? `🔥 [ФИНАЛЬНЫЙ СЕТ] Сет ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (${nextSet.workSeconds}s) - Последний сет раунда!`
+            ? `🔥 [FINAL SET] Set ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (${nextSet.workSeconds}s)`
             : `Phase -> WORK | Set ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (${nextSet.workSeconds}s)`
         );
       } else if (nextSet.restSeconds > 0) {
@@ -392,8 +480,8 @@ export default function App() {
         }
         addTerminalLog(
           isLastSet
-            ? `🔥 [ФИНАЛЬНЫЙ СЕТ] Сет ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (Работа 0с, Отдых ${nextSet.restSeconds}s) - Последний сет раунда!`
-            : `Phase -> REST (Работа 0с) | Set ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (${nextSet.restSeconds}s)`
+            ? `🔥 [FINAL SET] Set ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (Work 0s, Rest ${nextSet.restSeconds}s)`
+            : `Phase -> REST (Work 0s) | Set ${nextSetIdx + 1}/${currentPlan.sets.length}: "${nextSet.name}" (${nextSet.restSeconds}s)`
         );
       } else {
         advanceToNextSet();
@@ -565,15 +653,15 @@ export default function App() {
     setEditingPresetId(plan.id);
     setEditorPlan(JSON.parse(JSON.stringify(plan)));
     setActiveTab('editor');
-    addTerminalLog(`Открыт для редактирования шаблон "${plan.name}".`);
+    addTerminalLog(`Opened preset for editing: "${plan.name}".`);
   };
 
   // Create a brand new blank workout plan / complex cycle
   const handleCreateNewBlankPlan = () => {
     const blankPlan: WorkoutPlan = {
       id: `custom-plan-${Date.now()}`,
-      name: 'Новый сложный цикл',
-      description: 'Пользовательский тренировочный цикл с индивидуальной настройкой сетов.',
+      name: t('editor_btn_new_cycle'),
+      description: t('editor_custom_desc'),
       prepSeconds: 5,
       cycles: 1,
       cycleRestSeconds: 30,
@@ -582,19 +670,19 @@ export default function App() {
       sets: [
         {
           id: `set-${Date.now()}-1`,
-          name: 'Сет 1',
+          name: `${t('timer_set')} 1`,
           workSeconds: 30,
           restSeconds: 15,
         },
         {
           id: `set-${Date.now()}-2`,
-          name: 'Сет 2',
+          name: `${t('timer_set')} 2`,
           workSeconds: 30,
           restSeconds: 15,
         },
         {
           id: `set-${Date.now()}-3`,
-          name: 'Сет 3',
+          name: `${t('timer_set')} 3`,
           workSeconds: 30,
           restSeconds: 15,
         },
@@ -604,7 +692,7 @@ export default function App() {
     setEditingPresetId(null);
     setEditorPlan(blankPlan);
     setActiveTab('editor');
-    addTerminalLog('Создан новый пустой сложный цикл в конструкторе.');
+    addTerminalLog('Created new blank complex cycle in editor.');
   };
 
   const handleSavePresetUpdate = (updatedPlan: WorkoutPlan) => {
@@ -615,7 +703,7 @@ export default function App() {
       setCurrentPlan(updatedPlan);
     }
     setEditorPlan(updatedPlan);
-    addTerminalLog(`Сохранены изменения в шаблоне "${updatedPlan.name}".`);
+    addTerminalLog(`Saved changes to preset "${updatedPlan.name}".`);
   };
 
   const handleSaveAsNewPreset = (newPlan: WorkoutPlan) => {
@@ -629,15 +717,22 @@ export default function App() {
     setEditingPresetId(presetToAdd.id);
     setEditorPlan(presetToAdd);
     setCurrentPlan(presetToAdd);
-    addTerminalLog(`Сохранен новый пользовательский шаблон "${presetToAdd.name}".`);
+    addTerminalLog(`Saved new custom preset "${presetToAdd.name}".`);
   };
 
   const handleResetToOriginalPreset = () => {
     if (!editingPresetId) return;
+    const defaults = getDefaultPresets(language);
+    const def = defaults.find((d) => d.id === editingPresetId);
+    if (def) {
+      setEditorPlan(JSON.parse(JSON.stringify(def)));
+      addTerminalLog(`Reset editor changes to original preset "${def.name}".`);
+      return;
+    }
     const orig = presets.find((p) => p.id === editingPresetId);
     if (orig) {
       setEditorPlan(JSON.parse(JSON.stringify(orig)));
-      addTerminalLog(`Сброшены изменения редактора к исходному шаблону "${orig.name}".`);
+      addTerminalLog(`Reset editor changes to original preset "${orig.name}".`);
     }
   };
 
@@ -649,9 +744,10 @@ export default function App() {
   };
 
   const handleResetDefaultPresets = () => {
-    setPresets(DEFAULT_WORKOUT_PRESETS);
-    setCurrentPlan(DEFAULT_WORKOUT_PRESETS[0]);
-    setEditorPlan(DEFAULT_WORKOUT_PRESETS[0]);
+    const defaults = getDefaultPresets(language);
+    setPresets(defaults);
+    setCurrentPlan(defaults[0]);
+    setEditorPlan(defaults[0]);
     setEditingPresetId(null);
     addTerminalLog('Reset all workout presets to default factory settings.');
   };
@@ -794,9 +890,9 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3 text-zinc-400">
-            <span>План: <strong className="text-zinc-200">{currentPlan.name}</strong></span>
+            <span>{t('footer_plan')}: <strong className="text-zinc-200">{getLocalizedPlanName(currentPlan, language) || currentPlan.name}</strong></span>
             <span>•</span>
-            <span>Метроном: <strong className="text-emerald-400">{soundConfig.metronome3s ? '3-2-1 сек' : 'Выкл'}</strong></span>
+            <span>{t('footer_metronome')}: <strong className="text-emerald-400">{soundConfig.metronome3s ? t('footer_metronome_on') : t('footer_metronome_off')}</strong></span>
           </div>
         </div>
       </footer>

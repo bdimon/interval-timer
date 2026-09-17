@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Terminal as TerminalIcon, Copy, RotateCcw, Play, Pause, SkipForward, Volume2 } from 'lucide-react';
 import { TimerPhase, WorkoutPlan } from '../types';
+import { useI18n } from '../i18n/context';
+import { getLocalizedPlanName, getLocalizedSetName } from '../utils/defaultPresets';
 
 interface TerminalSimulatorProps {
   phase: TimerPhase;
@@ -37,6 +39,7 @@ export const TerminalSimulator: React.FC<TerminalSimulatorProps> = ({
   onSkipNext,
   onToggleSound,
 }) => {
+  const { t, language } = useI18n();
   const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,7 +50,9 @@ export const TerminalSimulator: React.FC<TerminalSimulatorProps> = ({
   const secs = Math.max(0, secondsRemaining) % 60;
   const timeStr = `${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
 
+  const planDisplayName = getLocalizedPlanName(plan, language) || plan.name;
   const currentSet = plan.sets[currentSetIndex] || plan.sets[0];
+  const currentSetName = getLocalizedSetName(plan, currentSetIndex, language) || currentSet?.name || 'N/A';
   const isCountingDown3s = secondsRemaining <= 3 && secondsRemaining >= 1 && phase !== 'PAUSED' && phase !== 'COMPLETED';
 
   // Render ASCII Progress Bar
@@ -69,35 +74,35 @@ export const TerminalSimulator: React.FC<TerminalSimulatorProps> = ({
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const getPhaseNameRussian = (p: TimerPhase): string => {
+  const getPhaseLocalizedName = (p: TimerPhase): string => {
     switch (p) {
-      case 'PREP': return 'ПОДГОТОВКА / PREPARATION';
-      case 'WORK': return 'РАБОТА / WORK';
-      case 'REST': return 'ОТДЫХ / REST';
-      case 'CYCLE_REST': return 'ОТДЫХ МЕЖДУ ЦИКЛАМИ';
-      case 'PAUSED': return 'ПАУЗА / PAUSED';
-      case 'COMPLETED': return 'ЗАВЕРШЕНО / COMPLETED';
-      default: return 'ОЖИДАНИЕ / IDLE';
+      case 'PREP': return t('phase_prep');
+      case 'WORK': return t('phase_work');
+      case 'REST': return t('phase_rest');
+      case 'CYCLE_REST': return t('phase_cycle_rest');
+      case 'PAUSED': return t('phase_paused');
+      case 'COMPLETED': return t('phase_completed');
+      default: return 'IDLE';
     }
   };
 
   const copyTerminalOutput = () => {
     const output = `
 ====================================================================
-       C INTERVAL TIMER  |  ИНТЕРВАЛЬНЫЙ ТАЙМЕР НА C
+       C INTERVAL TIMER  |  ${t('term_header_title')}
 ====================================================================
-План: ${plan.name} | Цикл: ${currentCycleIndex + 1} / ${plan.cycles}
-Сет: ${currentSetIndex + 1} / ${plan.sets.length} | Упражнение: ${currentSet?.name || 'N/A'}
-ФАЗА: ${getPhaseNameRussian(phase)} | ЗВУК: ${soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}
+${t('term_stat_plan')}: ${planDisplayName} | ${t('term_stat_cycle')}: ${currentCycleIndex + 1} / ${plan.cycles}
+${t('term_stat_set')}: ${currentSetIndex + 1} / ${plan.sets.length} | ${t('term_stat_exercise')}: ${currentSetName}
+${t('term_stat_phase')}: ${getPhaseLocalizedName(phase)} | ${t('term_stat_audio')}: ${soundEnabled ? t('term_stat_audio_on') : t('term_stat_audio_off')}
 
 +--------------------------------------------------------------+
-${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${secondsRemaining} ] <<<            |` : '|                                                              |'}
+${isCountingDown3s ? `|   >>> ${t('term_countdown_warn')}: [ ${secondsRemaining} ] <<<            |` : '|                                                              |'}
 |                    ${timeStr}                                 |
 |                                                              |
 +--------------------------------------------------------------+
-Фаза прогресс: ${renderAsciiProgressBar(elapsedInPhase, totalPhaseSeconds, 28)}
-Общее время:   ${formatElapsed(totalElapsedSeconds)}
-УПРАВЛЕНИЕ: [P] Пауза/Старт  [R] Сброс  [S] Пропуск  [M] Звук
+${t('term_phase_progress')} ${renderAsciiProgressBar(elapsedInPhase, totalPhaseSeconds, 28)}
+${t('term_total_time')}   ${formatElapsed(totalElapsedSeconds)}
+${t('term_console_controls')} [P] ${t('term_ctrl_pause')}  [R] ${t('term_ctrl_reset')}  [S] ${t('term_ctrl_skip')}  [M] ${t('term_ctrl_sound')}
     `;
     navigator.clipboard.writeText(output.trim());
   };
@@ -120,11 +125,11 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
           <div className="flex items-center gap-2">
             <button
               onClick={copyTerminalOutput}
-              title="Скопировать экран терминала"
+              title={t('term_copy_btn')}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition-colors"
             >
               <Copy className="w-3.5 h-3.5" />
-              <span>Копировать</span>
+              <span>{t('term_copy_btn')}</span>
             </button>
           </div>
         </div>
@@ -134,32 +139,32 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
           {/* Header Banner */}
           <div className="text-blue-400 font-bold mb-2">
             ====================================================================<br />
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C INTERVAL TIMER&nbsp;&nbsp;|&nbsp;&nbsp;ИНТЕРВАЛЬНЫЙ ТАЙМЕР НА C<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C INTERVAL TIMER&nbsp;&nbsp;|&nbsp;&nbsp;{t('term_header_title')}<br />
             ====================================================================
           </div>
 
           {/* Preset & Cycle Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 my-2">
             <div>
-              <span className="text-cyan-400 font-bold">План / Workout:</span>{' '}
-              <span className="text-white">{plan.name}</span>
+              <span className="text-cyan-400 font-bold">{t('term_stat_plan')}:</span>{' '}
+              <span className="text-white">{planDisplayName}</span>
             </div>
             <div>
-              <span className="text-cyan-400 font-bold">Цикл / Cycle:</span>{' '}
+              <span className="text-cyan-400 font-bold">{t('term_stat_cycle')}:</span>{' '}
               <span className="text-yellow-400 font-bold">{currentCycleIndex + 1}</span> / {plan.cycles}
             </div>
             <div>
-              <span className="text-cyan-400 font-bold">Сет / Set:</span>{' '}
+              <span className="text-cyan-400 font-bold">{t('term_stat_set')}:</span>{' '}
               <span className="text-yellow-400 font-bold">{currentSetIndex + 1}</span> / {plan.sets.length}
               {currentSetIndex === plan.sets.length - 1 && plan.sets.length > 1 && (
-                <span className="text-rose-400 font-bold ml-2 animate-pulse">[ФИНАЛ РАУНДА]</span>
+                 <span className="text-rose-400 font-bold ml-2 animate-pulse">[{t('badge_final_round')}]</span>
               )}
             </div>
             <div>
-              <span className="text-cyan-400 font-bold">Упражнение:</span>{' '}
-              <span className="text-white">{currentSet?.name}</span>
+              <span className="text-cyan-400 font-bold">{t('term_stat_exercise')}:</span>{' '}
+              <span className="text-white">{currentSetName}</span>
               {currentSet?.workSeconds === 0 && (
-                <span className="text-zinc-500 text-xs ml-2 font-mono">[Работа: 0с]</span>
+                <span className="text-zinc-500 text-xs ml-2 font-mono">[{t('phase_work')}: 0{t('unit_sec')}]</span>
               )}
             </div>
           </div>
@@ -167,7 +172,7 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
           {/* Phase & Sound */}
           <div className="my-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-900 pt-2">
             <div>
-              <span className="text-zinc-400 font-bold">ФАЗА:</span>{' '}
+              <span className="text-zinc-400 font-bold">{t('term_stat_phase')}:</span>{' '}
               <span
                 className={`font-bold uppercase ${
                   phase === 'WORK'
@@ -181,13 +186,13 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
                     : 'text-zinc-400'
                 }`}
               >
-                {getPhaseNameRussian(phase)}
+                {getPhaseLocalizedName(phase)}
               </span>
             </div>
             <div>
-              <span className="text-zinc-400 font-bold">ЗВУК / AUDIO:</span>{' '}
+              <span className="text-zinc-400 font-bold">{t('term_stat_audio')}:</span>{' '}
               <span className={soundEnabled ? 'text-emerald-400' : 'text-rose-400'}>
-                {soundEnabled ? '[ВКЛ / ENABLED]' : '[ВЫКЛ / MUTED]'}
+                [{soundEnabled ? t('term_stat_audio_on') : t('term_stat_audio_off')}]
               </span>
             </div>
           </div>
@@ -196,24 +201,24 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
           <div className="my-3 border border-zinc-700 bg-zinc-950 p-4 rounded text-center">
             {isCountingDown3s ? (
               <div className="text-rose-500 font-bold text-xs sm:text-sm animate-pulse mb-2">
-                &gt;&gt;&gt; ВНИМАНИЕ! ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [&nbsp;{secondsRemaining}&nbsp;] &lt;&lt;&lt; [МЕТРОНОМ ТИК]
+                &gt;&gt;&gt; {t('term_countdown_warn')}: [&nbsp;{secondsRemaining}&nbsp;] &lt;&lt;&lt;
               </div>
             ) : (
               <div className="text-zinc-600 text-xs mb-2">
-                [ТАЙМЕР АКТИВЕН — СТАНДАРТНОЕ ВРЕМЯ]
+                [{t('term_active_clock')}]
               </div>
             )}
             <div className="text-3xl sm:text-5xl font-black tracking-widest text-white font-mono my-1">
               {timeStr}
             </div>
             <div className="text-[11px] text-zinc-500 mt-1">
-              {phase === 'PAUSED' ? '=== НАЖМИТЕ [P] ЧТОБЫ ПРОДОЛЖИТЬ ===' : 'ВРЕМЯ ДО СМЕНЫ ИНТЕРВАЛА'}
+              {phase === 'PAUSED' ? `=== [P] ${t('term_ctrl_pause')} ===` : t('term_time_until_change')}
             </div>
           </div>
 
           {/* Progress Bar */}
           <div className="my-2">
-            <span className="text-zinc-400">Фаза прогресс:</span>{' '}
+            <span className="text-zinc-400">{t('term_phase_progress')}</span>{' '}
             <span className="text-emerald-400 font-bold">
               {renderAsciiProgressBar(elapsedInPhase, totalPhaseSeconds, 24)}
             </span>
@@ -221,39 +226,39 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
 
           {/* Overall Time */}
           <div className="my-2">
-            <span className="text-zinc-400">Общее время:  </span>{' '}
+            <span className="text-zinc-400">{t('term_total_time')}</span>{' '}
             <span className="text-yellow-400 font-bold">{formatElapsed(totalElapsedSeconds)}</span>
           </div>
 
           {/* Terminal Command Palette Bar */}
           <div className="mt-4 pt-3 border-t border-zinc-800 text-[11px] text-zinc-300 flex flex-wrap gap-2 items-center justify-between">
             <span className="bg-zinc-800 text-zinc-100 px-2 py-0.5 rounded">
-              УПРАВЛЕНИЕ В КОНСОЛИ:
+              {t('term_console_controls')}
             </span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={onTogglePause}
                 className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 text-emerald-400 border border-zinc-700 active:scale-95"
               >
-                [P] Пауза/Старт
+                [P] {t('term_ctrl_pause')}
               </button>
               <button
                 onClick={onReset}
                 className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 text-rose-400 border border-zinc-700 active:scale-95"
               >
-                [R] Сброс
+                [R] {t('term_ctrl_reset')}
               </button>
               <button
                 onClick={onSkipNext}
                 className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 text-yellow-400 border border-zinc-700 active:scale-95"
               >
-                [S] Пропуск
+                [S] {t('term_ctrl_skip')}
               </button>
               <button
                 onClick={onToggleSound}
                 className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 text-cyan-400 border border-zinc-700 active:scale-95"
               >
-                [M] Звук
+                [M] {t('term_ctrl_sound')}
               </button>
             </div>
           </div>
@@ -263,10 +268,10 @@ ${isCountingDown3s ? `|   >>> ОБРАТНЫЙ ОТСЧЕТ / COUNTDOWN: [ ${sec
         <div className="bg-zinc-950 border-t border-zinc-800/80 p-4 max-h-48 overflow-y-auto font-mono text-xs text-zinc-400">
           <div className="text-zinc-500 font-semibold mb-1 flex items-center gap-1.5">
             <TerminalIcon className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Системный журнал событий C ядра (stdout / stderr):</span>
+            <span>{t('term_system_log')}</span>
           </div>
           {terminalLogs.length === 0 ? (
-            <div className="text-zinc-600 italic">Событий пока нет. Запустите таймер.</div>
+            <div className="text-zinc-600 italic">{t('term_log_empty')}</div>
           ) : (
             <div className="space-y-1">
               {terminalLogs.map((log, i) => (
