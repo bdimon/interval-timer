@@ -1,7 +1,7 @@
 # CMakeLists.txt for Android NDK build of Interval Timer C Core
 cmake_minimum_required(VERSION 3.22.1)
 
-project("intervaltimer")
+project("intervaltimer" C)
 
 # Include parent directory where interval_timer.h and interval_timer.c reside
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)

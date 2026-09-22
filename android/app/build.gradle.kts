@@ -21,7 +21,6 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c99"
-                arguments += listOf("-DANDROID_STL=none")
             }
         }
 
