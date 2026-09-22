@@ -824,61 +824,372 @@ int main(int argc, char* argv[]) {
 }`,
   },
   {
-    name: 'Android NDK / JNI Мост',
-    filename: 'android_jni.c',
+    name: 'Android NDK / JNI Мост (Production)',
+    filename: 'interval_timer_jni.c',
     language: 'c',
-    description: 'Код привязки C-ядра к Android Java/Kotlin через Java Native Interface (JNI) для APK сборки.',
+    description: 'Полнофункциональный потокобезопасный JNI-мост с поддержкой двусторонних коллбэков в JVM (тиков, фаз, метронома) и передачи сложных планов тренировок.',
     content: `/**
- * @file android_jni.c
- * @brief Android NDK JNI Bridge for Interval Timer C Engine.
- * Allows running the C core natively inside an Android Service.
+ * @file interval_timer_jni.c
+ * @brief Android JNI Bridge for Interval Timer C Core.
+ * Connects com.intervaltimer.core.IntervalTimerNative to interval_timer.c
  */
 
 #include <jni.h>
+#include <android/log.h>
+#include <string.h>
+#include <pthread.h>
 #include "interval_timer.h"
 
+#define LOG_TAG "IntervalTimerJNI"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+
 static IntervalTimer g_timer;
+static JavaVM* g_jvm = NULL;
+static jobject g_listener_obj = NULL;
+static pthread_mutex_t g_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static jmethodID g_mid_on_tick = NULL;
+static jmethodID g_mid_on_phase_change = NULL;
+static jmethodID g_mid_on_metronome = NULL;
+static jmethodID g_mid_on_complete = NULL;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    g_jvm = vm;
+    LOGI("JNI_OnLoad: Interval Timer Native Module Loaded");
+    return JNI_VERSION_1_6;
+}
+
+static JNIEnv* get_jni_env(int* should_detach) {
+    *should_detach = 0;
+    if (!g_jvm) return NULL;
+    JNIEnv* env = NULL;
+    jint res = (*g_jvm)->GetEnv(g_jvm, (void**)&env, JNI_VERSION_1_6);
+    if (res == JNI_EDETACHED) {
+        if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) == JNI_OK) {
+            *should_detach = 1;
+        } else {
+            return NULL;
+        }
+    }
+    return env;
+}
+
+static void jni_on_tick_callback(const IntervalTimer* timer, void* user_data) {
+    if (!g_listener_obj || !g_mid_on_tick) return;
+    int should_detach = 0;
+    JNIEnv* env = get_jni_env(&should_detach);
+    if (!env) return;
+
+    (*env)->CallVoidMethod(env, g_listener_obj, g_mid_on_tick,
+                          (jint)timer->current_phase,
+                          (jint)timer->seconds_in_phase,
+                          (jint)timer->total_phase_seconds,
+                          (jint)timer->current_set_index,
+                          (jint)timer->current_cycle_index,
+                          (jint)timer->total_elapsed_seconds);
+
+    if (should_detach) (*g_jvm)->DetachCurrentThread(g_jvm);
+}
+
+static void jni_on_phase_change_callback(TimerPhase old_phase, TimerPhase new_phase, const IntervalTimer* timer, void* user_data) {
+    if (!g_listener_obj || !g_mid_on_phase_change) return;
+    int should_detach = 0;
+    JNIEnv* env = get_jni_env(&should_detach);
+    if (!env) return;
+
+    (*env)->CallVoidMethod(env, g_listener_obj, g_mid_on_phase_change, (jint)old_phase, (jint)new_phase);
+    if (should_detach) (*g_jvm)->DetachCurrentThread(g_jvm);
+}
+
+static void jni_on_metronome_callback(int remaining_seconds, const IntervalTimer* timer, void* user_data) {
+    if (!g_listener_obj || !g_mid_on_metronome) return;
+    int should_detach = 0;
+    JNIEnv* env = get_jni_env(&should_detach);
+    if (!env) return;
+
+    (*env)->CallVoidMethod(env, g_listener_obj, g_mid_on_metronome, (jint)remaining_seconds);
+    if (should_detach) (*g_jvm)->DetachCurrentThread(g_jvm);
+}
+
+static void jni_on_complete_callback(const IntervalTimer* timer, void* user_data) {
+    if (!g_listener_obj || !g_mid_on_complete) return;
+    int should_detach = 0;
+    JNIEnv* env = get_jni_env(&should_detach);
+    if (!env) return;
+
+    (*env)->CallVoidMethod(env, g_listener_obj, g_mid_on_complete, (jint)timer->total_elapsed_seconds);
+    if (should_detach) (*g_jvm)->DetachCurrentThread(g_jvm);
+}
 
 JNIEXPORT void JNICALL
-Java_com_fitness_intervaltimer_TimerService_initEngine(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
+Java_com_intervaltimer_core_IntervalTimerNative_nativeInit(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
     timer_init(&g_timer);
+    g_timer.on_tick = jni_on_tick_callback;
+    g_timer.on_phase_change = jni_on_phase_change_callback;
+    g_timer.on_metronome = jni_on_metronome_callback;
+    g_timer.on_complete = jni_on_complete_callback;
+    pthread_mutex_unlock(&g_timer_mutex);
 }
 
 JNIEXPORT void JNICALL
-Java_com_fitness_intervaltimer_TimerService_startTimer(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
+Java_com_intervaltimer_core_IntervalTimerNative_nativeRegisterListener(JNIEnv* env, jobject thiz, jobject listener) {
+    pthread_mutex_lock(&g_timer_mutex);
+    if (g_listener_obj) {
+        (*env)->DeleteGlobalRef(env, g_listener_obj);
+        g_listener_obj = NULL;
+    }
+    if (listener) {
+        g_listener_obj = (*env)->NewGlobalRef(env, listener);
+        jclass clazz = (*env)->GetObjectClass(env, listener);
+        g_mid_on_tick = (*env)->GetMethodID(env, clazz, "onNativeTick", "(IIIIII)V");
+        g_mid_on_phase_change = (*env)->GetMethodID(env, clazz, "onNativePhaseChange", "(II)V");
+        g_mid_on_metronome = (*env)->GetMethodID(env, clazz, "onNativeMetronome", "(I)V");
+        g_mid_on_complete = (*env)->GetMethodID(env, clazz, "onNativeComplete", "(I)V");
+    }
+    pthread_mutex_unlock(&g_timer_mutex);
+}
+
+JNIEXPORT void JNICALL
+Java_com_intervaltimer_core_IntervalTimerNative_nativeSetPlan(
+    JNIEnv* env, jobject thiz,
+    jstring jname, jint prepSeconds, jint cycles, jint cycleRestSeconds, jobjectArray setsArray) {
+    pthread_mutex_lock(&g_timer_mutex);
+    WorkoutPlan plan;
+    memset(&plan, 0, sizeof(WorkoutPlan));
+
+    const char* c_name = (*env)->GetStringUTFChars(env, jname, NULL);
+    if (c_name) {
+        strncpy(plan.name, c_name, MAX_NAME_LEN - 1);
+        (*env)->ReleaseStringUTFChars(env, jname, c_name);
+    } else {
+        strcpy(plan.name, "Workout");
+    }
+
+    plan.prep_seconds = prepSeconds;
+    plan.cycles = cycles;
+    plan.cycle_rest_seconds = cycleRestSeconds;
+
+    jsize num_sets = (*env)->GetArrayLength(env, setsArray);
+    if (num_sets > MAX_SETS) num_sets = MAX_SETS;
+    plan.num_sets = num_sets;
+
+    if (num_sets > 0) {
+        jobject first_set = (*env)->GetObjectArrayElement(env, setsArray, 0);
+        jclass set_cls = (*env)->GetObjectClass(env, first_set);
+        jfieldID fid_name = (*env)->GetFieldID(env, set_cls, "name", "Ljava/lang/String;");
+        jfieldID fid_work = (*env)->GetFieldID(env, set_cls, "workSeconds", "I");
+        jfieldID fid_rest = (*env)->GetFieldID(env, set_cls, "restSeconds", "I");
+        jfieldID fid_sf_work = (*env)->GetFieldID(env, set_cls, "soundWorkFreq", "I");
+        jfieldID fid_sf_rest = (*env)->GetFieldID(env, set_cls, "soundRestFreq", "I");
+
+        for (int i = 0; i < num_sets; i++) {
+            jobject set_obj = (*env)->GetObjectArrayElement(env, setsArray, i);
+            jstring jset_name = (jstring)(*env)->GetObjectField(env, set_obj, fid_name);
+            const char* set_name_str = jset_name ? (*env)->GetStringUTFChars(env, jset_name, NULL) : NULL;
+
+            if (set_name_str) {
+                strncpy(plan.sets[i].name, set_name_str, MAX_NAME_LEN - 1);
+                (*env)->ReleaseStringUTFChars(env, jset_name, set_name_str);
+            } else {
+                snprintf(plan.sets[i].name, MAX_NAME_LEN, "Set %d", i + 1);
+            }
+
+            plan.sets[i].work_seconds = (*env)->GetIntField(env, set_obj, fid_work);
+            plan.sets[i].rest_seconds = (*env)->GetIntField(env, set_obj, fid_rest);
+            plan.sets[i].sound_work_freq = (*env)->GetIntField(env, set_obj, fid_sf_work);
+            plan.sets[i].sound_rest_freq = (*env)->GetIntField(env, set_obj, fid_sf_rest);
+
+            (*env)->DeleteLocalRef(env, set_obj);
+            if (jset_name) (*env)->DeleteLocalRef(env, jset_name);
+        }
+        (*env)->DeleteLocalRef(env, first_set);
+        (*env)->DeleteLocalRef(env, set_cls);
+    }
+
+    timer_set_plan(&g_timer, &plan);
+    pthread_mutex_unlock(&g_timer_mutex);
+}
+
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeStart(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
     timer_start(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
 }
 
-JNIEXPORT void JNICALL
-Java_com_fitness_intervaltimer_TimerService_togglePause(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativePause(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
+    timer_pause(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
+}
+
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeResume(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
+    timer_resume(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
+}
+
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeTogglePause(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
     timer_toggle_pause(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
 }
 
-JNIEXPORT void JNICALL
-Java_com_fitness_intervaltimer_TimerService_resetTimer(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeReset(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
     timer_reset(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
 }
 
-JNIEXPORT void JNICALL
-Java_com_fitness_intervaltimer_TimerService_tickSecond(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeSkipNext(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
+    timer_skip_next(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
+}
+
+JNIEXPORT void JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeTickSecond(JNIEnv* env, jobject thiz) {
+    pthread_mutex_lock(&g_timer_mutex);
     timer_tick_second(&g_timer);
+    pthread_mutex_unlock(&g_timer_mutex);
 }
 
-JNIEXPORT jint JNICALL
-Java_com_fitness_intervaltimer_TimerService_getSecondsInPhase(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
+JNIEXPORT jint JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeGetPhase(JNIEnv* env, jobject thiz) {
+    return (jint)g_timer.current_phase;
+}
+
+JNIEXPORT jint JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeGetSecondsRemaining(JNIEnv* env, jobject thiz) {
     return (jint)g_timer.seconds_in_phase;
 }
 
-JNIEXPORT jint JNICALL
-Java_com_fitness_intervaltimer_TimerService_getCurrentPhase(JNIEnv *env, jobject thiz) {
-    (void)env; (void)thiz;
-    return (jint)g_timer.current_phase;
+JNIEXPORT jint JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeGetTotalPhaseSeconds(JNIEnv* env, jobject thiz) {
+    return (jint)g_timer.total_phase_seconds;
+}
+
+JNIEXPORT jint JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeGetCurrentSet(JNIEnv* env, jobject thiz) {
+    return (jint)g_timer.current_set_index;
+}
+
+JNIEXPORT jint JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeGetCurrentCycle(JNIEnv* env, jobject thiz) {
+    return (jint)g_timer.current_cycle_index;
+}
+
+JNIEXPORT jint JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeGetTotalElapsed(JNIEnv* env, jobject thiz) {
+    return (jint)g_timer.total_elapsed_seconds;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeIsRunning(JNIEnv* env, jobject thiz) {
+    return (jboolean)g_timer.is_running;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_intervaltimer_core_IntervalTimerNative_nativeIsPaused(JNIEnv* env, jobject thiz) {
+    return (jboolean)g_timer.is_paused;
+}`,
+  },
+  {
+    name: 'Android CMakeLists.txt (NDK Build)',
+    filename: 'CMakeLists.txt',
+    language: 'makefile',
+    description: 'Конфигурация CMake для компиляции C-ядра в библиотеку libinterval_timer_native.so для Android ABI (arm64-v8a, x86_64 и др.).',
+    content: `# CMakeLists.txt for Android NDK build of Interval Timer C Core
+cmake_minimum_required(VERSION 3.22.1)
+
+project("intervaltimer")
+
+# Include parent directory where interval_timer.h and interval_timer.c reside
+include_directories(\${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+# Define the shared native library
+add_library(
+    interval_timer_native
+    SHARED
+    interval_timer_jni.c
+    ../interval_timer.c
+)
+
+# Find Android system logging library
+find_library(
+    log-lib
+    log
+)
+
+# Link native libraries
+target_link_libraries(
+    interval_timer_native
+    \${log-lib}
+)`,
+  },
+  {
+    name: 'Kotlin JNI Обертка ядра',
+    filename: 'IntervalTimerNative.kt',
+    language: 'kotlin',
+    description: 'Kotlin Singleton с типобезопасными data class моделями (WorkoutPlan, IntervalSet, TimerSnapshot) и привязкой к C-коллбэкам.',
+    content: `package com.intervaltimer.core
+
+enum class TimerPhase(val id: Int, val displayNameRu: String, val displayNameEn: String) {
+    IDLE(0, "Ожидание", "Idle"),
+    PREP(1, "Подготовка", "Preparation"),
+    WORK(2, "Работа", "Work"),
+    REST(3, "Отдых", "Rest"),
+    CYCLE_REST(4, "Отдых между циклами", "Cycle Rest"),
+    PAUSED(5, "Пауза", "Paused"),
+    COMPLETED(6, "Завершено", "Completed");
+
+    companion object {
+        fun fromId(id: Int): TimerPhase = entries.firstOrNull { it.id == id } ?: IDLE
+    }
+}
+
+data class IntervalSet(
+    @JvmField val name: String,
+    @JvmField val workSeconds: Int,
+    @JvmField val restSeconds: Int,
+    @JvmField val soundWorkFreq: Int = 880,
+    @JvmField val soundRestFreq: Int = 440
+)
+
+data class WorkoutPlan(
+    val name: String,
+    val prepSeconds: Int = 5,
+    val cycles: Int = 1,
+    val cycleRestSeconds: Int = 30,
+    val sets: List<IntervalSet>
+)
+
+data class TimerSnapshot(
+    val phase: TimerPhase,
+    val secondsRemaining: Int,
+    val totalPhaseSeconds: Int,
+    val currentSetIndex: Int,
+    val currentCycleIndex: Int,
+    val totalElapsedSeconds: Int,
+    val isRunning: Boolean,
+    val isPaused: Boolean
+)
+
+object IntervalTimerNative {
+    init {
+        System.loadLibrary("interval_timer_native")
+    }
+
+    external fun nativeInit()
+    external fun nativeRegisterListener(listener: Any)
+    external fun nativeUnregisterListener()
+    external fun nativeSetPlan(name: String, prep: Int, cycles: Int, cycleRest: Int, sets: Array<IntervalSet>)
+    external fun nativeStart()
+    external fun nativePause()
+    external fun nativeResume()
+    external fun nativeTogglePause()
+    external fun nativeReset()
+    external fun nativeSkipNext()
+    external fun nativeTickSecond()
+    external fun nativeGetPhase(): Int
+    external fun nativeGetSecondsRemaining(): Int
+    external fun nativeGetTotalPhaseSeconds(): Int
+    external fun nativeGetCurrentSet(): Int
+    external fun nativeGetCurrentCycle(): Int
+    external fun nativeGetTotalElapsed(): Int
+    external fun nativeIsRunning(): Boolean
+    external fun nativeIsPaused(): Boolean
 }`,
   },
   {
